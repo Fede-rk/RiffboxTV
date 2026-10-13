@@ -7,7 +7,6 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
-import android.media.audiofx.Visualizer
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
@@ -23,10 +22,7 @@ class AudioVisualizerView @JvmOverloads constructor(
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val barRect = RectF()
     private val barHeights = FloatArray(barCount) { 0.2f }
-    private val targetHeights = FloatArray(barCount) { 0.2f }
 
-    private var visualizer: Visualizer? = null
-    private var isRealtime = false
     private var simulatedAnimator: ValueAnimator? = null
 
     init {
@@ -45,40 +41,7 @@ class AudioVisualizerView @JvmOverloads constructor(
     }
 
     fun linkAudioSession(audioSessionId: Int) {
-        release()
-        if (audioSessionId <= 0) return
-
-        try {
-            visualizer = Visualizer(audioSessionId).apply {
-                captureSize = Visualizer.getCaptureSizeRange()[1]
-                setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
-                    override fun onWaveFormDataCapture(vis: Visualizer?, bytes: ByteArray?, samplingRate: Int) {
-                        bytes?.let { updateFftData(it) }
-                    }
-
-                    override fun onFftDataCapture(vis: Visualizer?, bytes: ByteArray?, samplingRate: Int) {
-                        bytes?.let { updateFftData(it) }
-                    }
-                }, Visualizer.getMaxCaptureRate() / 2, true, true)
-                enabled = true
-            }
-            isRealtime = true
-            simulatedAnimator?.cancel()
-        } catch (e: Exception) {
-            // Audio permission or hardware restriction fallback
-            isRealtime = false
-            startSimulatedBeat()
-        }
-    }
-
-    private fun updateFftData(bytes: ByteArray) {
-        val step = maxOf(1, bytes.size / barCount)
-        for (i in 0 until barCount) {
-            val byteVal = if (i * step < bytes.size) Math.abs(bytes[i * step].toInt()) else 10
-            targetHeights[i] = (byteVal / 128f).coerceIn(0.1f, 1f)
-            barHeights[i] = barHeights[i] * 0.4f + targetHeights[i] * 0.6f
-        }
-        postInvalidateOnAnimation()
+        startSimulatedBeat()
     }
 
     private fun startSimulatedBeat() {
@@ -119,11 +82,6 @@ class AudioVisualizerView @JvmOverloads constructor(
     }
 
     fun release() {
-        try {
-            visualizer?.enabled = false
-            visualizer?.release()
-            visualizer = null
-        } catch (_: Exception) {}
         simulatedAnimator?.cancel()
         simulatedAnimator = null
     }

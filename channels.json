@@ -1,8 +1,8 @@
 {
-  "version": 3,
-  "latest_app_version_code": 3,
-  "latest_app_version_name": "1.2.0",
-  "release_notes": "Integración oficial de Firebase Analytics para estadísticas de audiencia en tiempo real.",
+  "version": 4,
+  "latest_app_version_code": 4,
+  "latest_app_version_name": "1.2.1",
+  "release_notes": "Optimizacion de permisos para maxima compatibilidad y seguridad con Play Protect.",
   "download_url": "",
   "categories": [
     "Todas",
