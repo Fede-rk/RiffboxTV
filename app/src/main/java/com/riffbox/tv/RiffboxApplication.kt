@@ -6,7 +6,7 @@ import com.riffbox.tv.security.SecurityGuard
 class RiffboxApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Execute anti-tampering and security checks at process startup
+        // Execute anti-tampering and security checks at startup
         SecurityGuard.initialize(this)
     }
 }

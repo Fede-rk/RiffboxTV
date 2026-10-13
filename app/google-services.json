@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "878189942077",
+    "project_id": "riffbox-tv",
+    "storage_bucket": "riffbox-tv.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878189942077:android:35f33512ac21e7cbcd6154",
+        "android_client_info": {
+          "package_name": "com.riffbox.tv"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCl8Q_uDkvVNycRnbNB5COVOuy4L9JvdyQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

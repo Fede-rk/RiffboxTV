@@ -26,6 +26,7 @@ import com.riffbox.tv.model.Channel
 import com.riffbox.tv.player.PlaybackManager
 import com.riffbox.tv.ui.CategoryAdapter
 import com.riffbox.tv.ui.ChannelAdapter
+import com.riffbox.tv.analytics.AnalyticsManager
 
 class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
 
@@ -46,6 +47,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
         setContentView(binding.root)
 
         detectDeviceMode()
+        AnalyticsManager.init(this, isTvDevice)
         requestNotificationPermission()
         setupUI()
         setupGestures()
@@ -74,6 +76,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
     private fun setupUI() {
         // Category adapter
         categoryAdapter = CategoryAdapter(ChannelsRepository.categories) { selectedCategory ->
+            AnalyticsManager.logCategorySelected(selectedCategory)
             val filtered = ChannelsRepository.getChannelsByCategory(selectedCategory)
             channelAdapter.updateList(filtered, playbackManager.currentChannel?.id ?: -1)
         }
@@ -209,6 +212,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
         }
 
         showOsd(channel)
+        AnalyticsManager.logChannelPlayed(channel)
     }
 
     override fun onPlaybackStateChanged(isPlaying: Boolean, isLoading: Boolean) {
