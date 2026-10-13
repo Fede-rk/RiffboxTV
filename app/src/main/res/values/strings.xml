@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Riffbox TV</string>
+    <string name="category_concerts">🎸 Conciertos &amp; Recitales</string>
+    <string name="category_rock">🤘 Rock &amp; Heavy Metal</string>
+    <string name="category_electronic">🎧 Electrónica &amp; DJs</string>
+    <string name="category_pop">🌟 Pop &amp; Videoclips</string>
+    <string name="category_latin">🌴 Latino &amp; Urbano</string>
+    <string name="category_radios">📻 Radios en Vivo</string>
+    <string name="connecting">Conectando señal…</string>
+    <string name="playing">En Vivo</string>
+    <string name="press_back_again">Presiona Atrás nuevamente para salir</string>
+</resources>

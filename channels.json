@@ -1,0 +1,420 @@
+{
+  "version": 2,
+  "latest_app_version_code": 2,
+  "latest_app_version_name": "1.1.0",
+  "release_notes": "Soporte completo para navegación horizontal en Android TV y 11 nuevos canales premium de conciertos, rock, clásicos y jazz.",
+  "download_url": "",
+  "categories": [
+    "Todas",
+    "🎸 Conciertos",
+    "🤘 Rock & Metal",
+    "📻 Clásicos 70s, 80s & 90s",
+    "🎷 Jazz & Blues",
+    "🎧 Electrónica",
+    "🌟 Pop & Hits",
+    "🌴 Latino & Cumbia",
+    "📻 Radios en Vivo"
+  ],
+  "channels": [
+    {
+      "id": 1,
+      "name": "Stingray iConcerts HD",
+      "category": "🎸 Conciertos",
+      "streamUrl": "https://dash4.antik.sk/live/test_stingray_iconcerts_hd_hevc50/playlist.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 2,
+      "name": "Qello Concerts by Stingray",
+      "category": "🎸 Conciertos",
+      "streamUrl": "https://lotus.stingray.com/manifest/qello-qello001-montreal/samsungtvplus/master.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 3,
+      "name": "MTV Live",
+      "category": "🎸 Conciertos",
+      "streamUrl": "http://23.237.104.106:8080/USA_MTV_LIVE/index.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 4,
+      "name": "Concert Channel",
+      "category": "🎸 Conciertos",
+      "streamUrl": "https://jmp2.uk/plu-6868152657543d1f8be4ece3.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 5,
+      "name": "Totalmusic Concerts",
+      "category": "🎸 Conciertos",
+      "streamUrl": "https://cdn.global.elektamedia.com/live/c7eds/Totalmusic_Concerts/SA_LIVE_hls_enc/master.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 6,
+      "name": "XITE Rock x Metal",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://d198ro05q94rc4.cloudfront.net/XITE_Rock_On.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 7,
+      "name": "NOW Rock",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://lightning-now90s-samsungnz.amagi.tv/playlist.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 8,
+      "name": "Eska Rock TV",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "http://92.114.85.87:8016/play/a005/index.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 9,
+      "name": "Stingray Classic Rock",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://lotus.stingray.com/manifest/ose-101ads-montreal/samsungtvplus/master.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 10,
+      "name": "Stingray Rock Alternative",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://lotus.stingray.com/manifest/ose-102ads-montreal/samsungtvplus/master.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 11,
+      "name": "MTV Rocks LatAm",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://jmp2.uk/plu-66a01b52a4ee27000808ea36.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 12,
+      "name": "Alterna TV (Argentina)",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://tv.alterna.ar/stream/hls/live.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 13,
+      "name": "BRIDGE Rock",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "http://178.134.1.158:8081/BRIDGEROCK/index.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 14,
+      "name": "Rock TV Europa",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://tv.broadcasting.ro/rocktv/85c83a80-4f71-4f2d-a8d6-43f676896bcb.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 15,
+      "name": "Metaleitor TV",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://vs20.live.opencaster.com/metaleitortv_423d3342/index.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 16,
+      "name": "Lamore Rock Show",
+      "category": "🤘 Rock & Metal",
+      "streamUrl": "https://a.cdni.live/rodrigo2364/rodrigo2364/playlist.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 17,
+      "name": "NOW 80s Hits",
+      "category": "📻 Clásicos 70s, 80s & 90s",
+      "streamUrl": "https://lightning-now80s-samsungnz.amagi.tv/playlist.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 18,
+      "name": "NOW 70s Classic",
+      "category": "📻 Clásicos 70s, 80s & 90s",
+      "streamUrl": "https://lightning-now70s-samsungnz.amagi.tv/playlist.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 19,
+      "name": "Stingray Retro",
+      "category": "📻 Clásicos 70s, 80s & 90s",
+      "streamUrl": "https://lotus.stingray.com/manifest/ose-104ads-montreal/samsungtvplus/master.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 20,
+      "name": "Totalmusic 80s",
+      "category": "📻 Clásicos 70s, 80s & 90s",
+      "streamUrl": "https://cdn.global.elektamedia.com/live/c7eds/Totalmusic_80s/SA_LIVE_hls_enc/master.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 21,
+      "name": "MTV Classic LatAm",
+      "category": "📻 Clásicos 70s, 80s & 90s",
+      "streamUrl": "https://jmp2.uk/plu-66a11a21a79dea0008aa90ca.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 22,
+      "name": "Stingray DJAZZ",
+      "category": "🎷 Jazz & Blues",
+      "streamUrl": "https://lotus.stingray.com/manifest/djazz-djaads-montreal/samsungtvplus/master.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 23,
+      "name": "Qwest TV Jazz & Beyond",
+      "category": "🎷 Jazz & Blues",
+      "streamUrl": "https://samsungau-qwestjazz-samsungtv-zw2jc.amagi.tv/playlist/samsungau-qwestjazz-samsungtv/playlist.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 24,
+      "name": "Clubbing TV",
+      "category": "🎧 Electrónica",
+      "streamUrl": "https://a-cdn.klowdtv.com/live3/clubbingtv_720p/playlist.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 25,
+      "name": "Dance Television",
+      "category": "🎧 Electrónica",
+      "streamUrl": "https://m1b2.worldcast.tv/dancetelevisionone/2/dancetelevisionone.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 26,
+      "name": "Deluxe Dance",
+      "category": "🎧 Electrónica",
+      "streamUrl": "https://sdn-global-live-streaming-packager-cache.3qsdn.com/64733/64733_264_live.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 27,
+      "name": "DanceTV Deep House",
+      "category": "🎧 Electrónica",
+      "streamUrl": "https://m1b2.worldcast.tv/dancetelevisiontwo/dancetelevisiontwo.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 28,
+      "name": "Beats Radio TV",
+      "category": "🎧 Electrónica",
+      "streamUrl": "https://videostream.shockmedia.com.ar:19360/beatsradio/beatsradio.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 29,
+      "name": "Deluxe Music",
+      "category": "🌟 Pop & Hits",
+      "streamUrl": "https://sdn-global-live-streaming-packager-cache.3qsdn.com/13456/13456_264_live.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 30,
+      "name": "4Fun TV",
+      "category": "🌟 Pop & Hits",
+      "streamUrl": "https://stream.4fun.tv:8888/sd/4fun_sd_high.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 31,
+      "name": "Deluxe Rap",
+      "category": "🌟 Pop & Hits",
+      "streamUrl": "https://sdn-global-live-streaming-packager-cache.3qsdn.com/65183/65183_264_live.m3u8",
+      "badge": "1080p",
+      "isRadio": false
+    },
+    {
+      "id": 32,
+      "name": "Urbano TV",
+      "category": "🌴 Latino & Cumbia",
+      "streamUrl": "https://59ef525c24caa.streamlock.net/tvurbano/tvurbano/playlist.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 33,
+      "name": "Cumbia Mix TV",
+      "category": "🌴 Latino & Cumbia",
+      "streamUrl": "https://cloud.tvomix.com/CUMBIAMIX/index.m3u8",
+      "badge": "720p",
+      "isRadio": false
+    },
+    {
+      "id": 34,
+      "name": "FM La Redonda 100.3",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://01.solumedia.com.ar:8290/stream?icy=http",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 35,
+      "name": "Red 92 (FM 92.1)",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://radios.solumedia.com/6426/stream",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 36,
+      "name": "La Cielo (FM 103.5)",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "http://66.128.32.105:8006/;",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 37,
+      "name": "221 Radio (FM 103.1)",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://01.solumedia.com.ar:8612/stream",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 38,
+      "name": "Radio La Plata (FM 90.9)",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://radios.solumedia.com/6348/stream",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 39,
+      "name": "Rock & Pop 95.9 FM",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://playerservices.streamtheworld.com/api/livestream-redirect/ROCKANDPOPAAC.aac",
+      "badge": "AAC",
+      "isRadio": true
+    },
+    {
+      "id": 40,
+      "name": "Radio Nacional Rock 93.7",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "http://sa.mp3.icecast.magma.edge-access.net:7200/sc_rad39",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 41,
+      "name": "Blue 100.7 FM",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://playerservices.streamtheworld.com/api/livestream-redirect/BLUE_FM_100_7AAC.aac",
+      "badge": "AAC",
+      "isRadio": true
+    },
+    {
+      "id": 42,
+      "name": "La 100 (99.9 FM)",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://playerservices.streamtheworld.com/api/livestream-redirect/FM999_56.mp3",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 43,
+      "name": "Metro 95.1 FM",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://playerservices.streamtheworld.com/api/livestream-redirect/METRO.mp3",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 44,
+      "name": "Urbana Play 104.3 FM",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://vmf.edge-apps.net/playlist/urbana.m3u8/play.m3u8",
+      "badge": "HLS",
+      "isRadio": true
+    },
+    {
+      "id": 45,
+      "name": "Pop Radio 101.5 FM",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://popradio.stweb.tv/popradio/live/playlist.m3u8",
+      "badge": "HLS",
+      "isRadio": true
+    },
+    {
+      "id": 46,
+      "name": "Radio Mitre AM 790",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://playerservices.streamtheworld.com/api/livestream-redirect/AM790_56AAC.aac",
+      "badge": "AAC",
+      "isRadio": true
+    },
+    {
+      "id": 47,
+      "name": "Cadena 3 Argentina",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://liveradio.mediainbox.net/radio3.mp3",
+      "badge": "HQ",
+      "isRadio": true
+    },
+    {
+      "id": 48,
+      "name": "Radio Rivadavia AM 630",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://playerservices.streamtheworld.com/api/livestream-redirect/RIVADAVIAAAC.aac",
+      "badge": "AAC",
+      "isRadio": true
+    },
+    {
+      "id": 49,
+      "name": "Radio 10 AM 710",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "https://radio10.stweb.tv/radio10/live/playlist.m3u8",
+      "badge": "HLS",
+      "isRadio": true
+    },
+    {
+      "id": 50,
+      "name": "Radio Nacional Folklórica",
+      "category": "📻 Radios en Vivo",
+      "streamUrl": "http://sa.mp3.icecast.magma.edge-access.net:7200/sc_rad38",
+      "badge": "HQ",
+      "isRadio": true
+    }
+  ]
+}

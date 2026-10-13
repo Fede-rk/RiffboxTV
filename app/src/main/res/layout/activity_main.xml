@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rootContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_main"
+    android:keepScreenOn="true">
+
+    <!-- 1. Player View (Video) -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:use_controller="false"
+        app:resize_mode="fit"
+        app:surface_type="surface_view"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 2. Radio Ambient Screen (Audio only radio stations) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/radioContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#121316"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- Center Station Logo / Icon -->
+        <ImageView
+            android:id="@+id/radioLogo"
+            android:layout_width="130dp"
+            android:layout_height="130dp"
+            android:layout_marginBottom="18dp"
+            android:src="@drawable/ic_riffbox_logo"
+            app:layout_constraintBottom_toTopOf="@+id/radioTitle"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_chainStyle="packed" />
+
+        <!-- Radio Name (Responsive, never truncates or overflows) -->
+        <TextView
+            android:id="@+id/radioTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="Radio en Vivo"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toTopOf="@+id/radioSubtitle"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/radioLogo" />
+
+        <!-- Subtitle / Frequency -->
+        <TextView
+            android:id="@+id/radioSubtitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="24dp"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Audio HQ • Señal Nacional"
+            android:textColor="@color/accent_orange"
+            android:textSize="15sp"
+            app:layout_constraintBottom_toTopOf="@+id/visualizerView"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/radioTitle" />
+
+        <!-- Audio Frequency Visualizer (Animated bars) -->
+        <com.riffbox.tv.ui.AudioVisualizerView
+            android:id="@+id/visualizerView"
+            android:layout_width="260dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="22dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/radioSubtitle" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- 3. TV OSD Info Banner (Responsive for both portrait & landscape) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/osdContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/selector_item_focus"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintWidth_max="500dp">
+
+        <TextView
+            android:id="@+id/osdChannelNumber"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CH 01"
+            android:textColor="@color/accent_cyan"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/osdChannelName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Nombre del Canal"
+            android:textColor="@color/text_primary"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/osdChannelNumber"
+            app:layout_constraintEnd_toStartOf="@+id/osdBadge"
+            app:layout_constraintStart_toEndOf="@+id/osdChannelNumber"
+            app:layout_constraintTop_toTopOf="@+id/osdChannelNumber" />
+
+        <TextView
+            android:id="@+id/osdBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge"
+            android:paddingStart="6dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="2dp"
+            android:text="1080p"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            app:layout_constraintBottom_toBottomOf="@+id/osdChannelNumber"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/osdChannelNumber" />
+
+        <TextView
+            android:id="@+id/osdCategory"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="🎸 Conciertos"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@+id/osdChannelNumber"
+            app:layout_constraintTop_toBottomOf="@+id/osdChannelNumber" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- 4. Loading Indicator -->
+    <ProgressBar
+        android:id="@+id/loadingIndicator"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:indeterminateTint="@color/accent_orange"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 5. Dim Overlay (Tap outside sidebar to close) -->
+    <View
+        android:id="@+id/dimOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#99000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="false"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 6. Sidebar Channel Menu (Responsive: 82% on phones, max 380dp on TV/tablets) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/sidebarContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#F2121316"
+        android:padding="16dp"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false"
+        android:descendantFocusability="afterDescendants"
+        app:layout_constraintWidth_default="percent"
+        app:layout_constraintWidth_percent="0.82"
+        app:layout_constraintWidth_max="380dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- App Brand Header -->
+        <ImageView
+            android:id="@+id/brandLogo"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:src="@drawable/ic_riffbox_logo"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/brandTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:text="RIFFBOX"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/brandLogo"
+            app:layout_constraintStart_toEndOf="@+id/brandLogo"
+            app:layout_constraintTop_toTopOf="@+id/brandLogo" />
+
+        <TextView
+            android:id="@+id/brandBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_badge"
+            android:text="TV"
+            android:textColor="@color/accent_orange"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/brandTitle"
+            app:layout_constraintStart_toEndOf="@+id/brandTitle"
+            app:layout_constraintTop_toTopOf="@+id/brandTitle" />
+
+        <!-- Category Filter Chips -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/categoriesRecyclerView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:focusable="false"
+            android:descendantFocusability="afterDescendants"
+            android:nextFocusDown="@+id/channelsRecyclerView"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/brandLogo" />
+
+        <!-- Channels List -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/channelsRecyclerView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="10dp"
+            android:clipToPadding="false"
+            android:focusable="false"
+            android:descendantFocusability="afterDescendants"
+            android:nextFocusUp="@+id/categoriesRecyclerView"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/categoriesRecyclerView" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
