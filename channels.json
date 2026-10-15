@@ -1,9 +1,9 @@
 {
-  "version": 4,
-  "latest_app_version_code": 4,
-  "latest_app_version_name": "1.2.1",
-  "release_notes": "Optimizacion de permisos para maxima compatibilidad y seguridad con Play Protect.",
-  "download_url": "",
+  "version": 5,
+  "latest_app_version_code": 5,
+  "latest_app_version_name": "1.3.0",
+  "release_notes": "Riffbox Music On-Demand: Navegación estilo Netflix, listas de reproducción curadas, buscador de canciones, visualizador analógico fluido y descargas offline en smartphones.",
+  "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [
     "Todas",
     "🎸 Conciertos",

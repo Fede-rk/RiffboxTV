@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="160dp"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="14dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="@drawable/selector_item_focus"
+    android:padding="6dp">
+
+    <!-- Playlist Cover -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardCover"
+        android:layout_width="148dp"
+        android:layout_height="148dp"
+        app:cardCornerRadius="10dp"
+        app:cardElevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/playlistImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_riffbox_logo" />
+
+        <!-- Badge -->
+        <TextView
+            android:id="@+id/playlistBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="8dp"
+            android:background="@drawable/bg_badge"
+            android:paddingStart="6dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="2dp"
+            android:text="ESENCIAL"
+            android:textColor="@color/accent_orange"
+            android:textSize="9sp"
+            android:textStyle="bold" />
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- Playlist Title -->
+    <TextView
+        android:id="@+id/playlistTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="Los 100 Mejores Riffs"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="@+id/cardCover"
+        app:layout_constraintStart_toStartOf="@+id/cardCover"
+        app:layout_constraintTop_toBottomOf="@+id/cardCover" />
+
+    <!-- Playlist Subtitle -->
+    <TextView
+        android:id="@+id/playlistSubtitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="Led Zeppelin, AC/DC, Queen"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        app:layout_constraintEnd_toEndOf="@+id/cardCover"
+        app:layout_constraintStart_toStartOf="@+id/cardCover"
+        app:layout_constraintTop_toBottomOf="@+id/playlistTitle" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

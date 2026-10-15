@@ -12,8 +12,8 @@ android {
         applicationId = "com.riffbox.tv"
         minSdk = 21
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.2.1"
+        versionCode = 5
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -65,6 +65,7 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
 
     // Google Media3 (ExoPlayer)
     implementation("androidx.media3:media3-exoplayer:1.3.1")
@@ -81,4 +82,7 @@ dependencies {
     // Firebase Analytics (Google)
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-analytics-ktx")
+
+    // Android YouTube Player Engine
+    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.1")
 }

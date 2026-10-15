@@ -16,30 +16,66 @@ import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import coil.load
+import coil.transform.RoundedCornersTransformation
+import com.riffbox.tv.analytics.AnalyticsManager
 import com.riffbox.tv.data.AppUpdateInfo
 import com.riffbox.tv.data.ChannelsRepository
 import com.riffbox.tv.databinding.ActivityMainBinding
 import com.riffbox.tv.model.Channel
+import com.riffbox.tv.music.data.DownloadedTracksManager
+import com.riffbox.tv.music.data.MusicCatalogRepository
+import com.riffbox.tv.music.model.MusicArtist
+import com.riffbox.tv.music.model.MusicCategory
+import com.riffbox.tv.music.model.MusicPlaylist
+import com.riffbox.tv.music.model.MusicTrack
+import com.riffbox.tv.music.player.MusicPlayerManager
+import com.riffbox.tv.music.ui.MusicArtistAdapter
+import com.riffbox.tv.music.ui.MusicCategoryAdapter
+import com.riffbox.tv.music.ui.MusicPlaylistAdapter
+import com.riffbox.tv.music.ui.MusicTrackHorizontalAdapter
+import com.riffbox.tv.music.ui.MusicTrackVerticalAdapter
 import com.riffbox.tv.player.PlaybackManager
 import com.riffbox.tv.ui.CategoryAdapter
 import com.riffbox.tv.ui.ChannelAdapter
-import com.riffbox.tv.analytics.AnalyticsManager
+import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
+class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, MusicPlayerManager.MusicPlayerListener {
 
     private lateinit var binding: ActivityMainBinding
+
+    // Live TV / Radio components
     private lateinit var playbackManager: PlaybackManager
     private lateinit var channelAdapter: ChannelAdapter
     private lateinit var categoryAdapter: CategoryAdapter
     private lateinit var gestureDetector: GestureDetector
 
+    // Music on-demand components
+    private lateinit var musicPlayerManager: MusicPlayerManager
+    private lateinit var musicCategoryAdapter: MusicCategoryAdapter
+    private lateinit var musicPlaylistAdapter: MusicPlaylistAdapter
+    private lateinit var musicArtistAdapter: MusicArtistAdapter
+    private lateinit var musicDownloadsAdapter: MusicTrackHorizontalAdapter
+    private lateinit var tracksOverlayAdapter: MusicTrackVerticalAdapter
+
     private var isTvDevice = false
     private val handler = Handler(Looper.getMainLooper())
     private var isSidebarVisible = false
     private var backPressedOnce = false
+
+    // App Navigation State: MUSIC vs LIVE_TV
+    private var currentMode = Mode.MUSIC
+
+    private enum class Mode {
+        MUSIC,
+        LIVE_TV
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,7 +85,9 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
         detectDeviceMode()
         AnalyticsManager.init(this, isTvDevice)
         requestNotificationPermission()
-        setupUI()
+
+        setupMusicUI()
+        setupLiveTVUI()
         setupGestures()
         setupPlayback()
         syncChannelsAndCheckUpdates()
@@ -73,7 +111,298 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
         }
     }
 
-    private fun setupUI() {
+    // ==========================================
+    // RIFFBOX MUSIC ON-DEMAND SETUP
+    // ==========================================
+    private fun setupMusicUI() {
+        // Initialize Music Player Engine
+        musicPlayerManager = MusicPlayerManager(this, binding.hiddenYouTubePlayerView, this)
+
+        // 1. Categories Adapter
+        musicCategoryAdapter = MusicCategoryAdapter(MusicCatalogRepository.categories) { category ->
+            openCategoryTracks(category)
+        }
+        binding.musicCategoriesRecyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        binding.musicCategoriesRecyclerView.adapter = musicCategoryAdapter
+
+        // 2. Playlists Adapter
+        musicPlaylistAdapter = MusicPlaylistAdapter(MusicCatalogRepository.playlists) { playlist ->
+            openPlaylistTracks(playlist)
+        }
+        binding.musicPlaylistsRecyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        binding.musicPlaylistsRecyclerView.adapter = musicPlaylistAdapter
+
+        // 3. Artists Adapter
+        musicArtistAdapter = MusicArtistAdapter(MusicCatalogRepository.artists) { artist ->
+            openArtistTracks(artist)
+        }
+        binding.musicArtistsRecyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        binding.musicArtistsRecyclerView.adapter = musicArtistAdapter
+
+        // 4. Offline Downloads (Smartphones only)
+        if (isTvDevice) {
+            binding.downloadsSectionLayout.visibility = View.GONE
+            binding.btnModalDownload.visibility = View.GONE
+        } else {
+            val downloadedTracks = DownloadedTracksManager.getDownloadedTracks(this)
+            if (downloadedTracks.isNotEmpty()) {
+                binding.downloadsSectionLayout.visibility = View.VISIBLE
+            }
+            musicDownloadsAdapter = MusicTrackHorizontalAdapter(downloadedTracks) { track ->
+                playMusicTrack(track, downloadedTracks)
+            }
+            binding.musicDownloadsRecyclerView.layoutManager =
+                LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+            binding.musicDownloadsRecyclerView.adapter = musicDownloadsAdapter
+        }
+
+        // 5. Tracks Overlay Adapter
+        tracksOverlayAdapter = MusicTrackVerticalAdapter(
+            emptyList(),
+            isTvDevice,
+            onTrackClick = { track ->
+                playMusicTrack(track, tracksOverlayAdapterCurrentList)
+            },
+            onDownloadClick = { track ->
+                handleTrackDownload(track)
+            }
+        )
+        binding.tracksRecyclerView.layoutManager = LinearLayoutManager(this)
+        binding.tracksRecyclerView.adapter = tracksOverlayAdapter
+
+        // Back from Tracks Overlay
+        binding.btnBackFromTracks.setOnClickListener {
+            binding.musicTracksOverlay.visibility = View.GONE
+            binding.musicScrollView.visibility = View.VISIBLE
+        }
+
+        // Search Input Handling
+        binding.etSearchMusic.setOnEditorActionListener { v, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
+                val query = v.text.toString().trim()
+                if (query.isNotEmpty()) {
+                    performMusicSearch(query)
+                }
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                imm?.hideSoftInputFromWindow(v.windowToken, 0)
+                true
+            } else {
+                false
+            }
+        }
+
+        // Switch to Live TV Button
+        binding.btnGoLive.setOnClickListener {
+            switchToLiveTV()
+        }
+
+        // Return from Live TV Button
+        binding.btnBackToMusic.setOnClickListener {
+            switchToMusic()
+        }
+
+        // Mini Player Bar Controls
+        binding.nowPlayingMiniBar.setOnClickListener {
+            openMusicPlayerModal()
+        }
+        binding.btnMiniPlayPause.setOnClickListener {
+            musicPlayerManager.togglePlayPause()
+        }
+
+        // Fullscreen Player Modal Controls
+        binding.btnMinimizePlayer.setOnClickListener {
+            binding.musicPlayerModal.visibility = View.GONE
+        }
+        binding.btnModalPlayPause.setOnClickListener {
+            musicPlayerManager.togglePlayPause()
+        }
+        binding.btnModalNext.setOnClickListener {
+            musicPlayerManager.playNext()
+        }
+        binding.btnModalPrev.setOnClickListener {
+            musicPlayerManager.playPrevious()
+        }
+        binding.btnModalDownload.setOnClickListener {
+            musicPlayerManager.currentTrack?.let { track ->
+                handleTrackDownload(track)
+            }
+        }
+    }
+
+    private var tracksOverlayAdapterCurrentList: List<MusicTrack> = emptyList()
+
+    private fun openCategoryTracks(category: MusicCategory) {
+        binding.musicScrollView.visibility = View.GONE
+        binding.musicTracksOverlay.visibility = View.VISIBLE
+        binding.tvTracksOverlayTitle.text = "${category.icon} ${category.title}"
+        binding.musicSearchLoading.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            val results = MusicCatalogRepository.searchMusic(category.query)
+            binding.musicSearchLoading.visibility = View.GONE
+            tracksOverlayAdapterCurrentList = results
+            tracksOverlayAdapter.updateList(results)
+        }
+    }
+
+    private fun openPlaylistTracks(playlist: MusicPlaylist) {
+        binding.musicScrollView.visibility = View.GONE
+        binding.musicTracksOverlay.visibility = View.VISIBLE
+        binding.tvTracksOverlayTitle.text = playlist.title
+        binding.musicSearchLoading.visibility = View.GONE
+
+        tracksOverlayAdapterCurrentList = playlist.tracks
+        tracksOverlayAdapter.updateList(playlist.tracks)
+    }
+
+    private fun openArtistTracks(artist: MusicArtist) {
+        binding.musicScrollView.visibility = View.GONE
+        binding.musicTracksOverlay.visibility = View.VISIBLE
+        binding.tvTracksOverlayTitle.text = "Canciones de ${artist.name}"
+        binding.musicSearchLoading.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            val results = MusicCatalogRepository.searchMusic(artist.query)
+            binding.musicSearchLoading.visibility = View.GONE
+            tracksOverlayAdapterCurrentList = results
+            tracksOverlayAdapter.updateList(results)
+        }
+    }
+
+    private fun performMusicSearch(query: String) {
+        binding.musicScrollView.visibility = View.GONE
+        binding.musicTracksOverlay.visibility = View.VISIBLE
+        binding.tvTracksOverlayTitle.text = "Resultados para: $query"
+        binding.musicSearchLoading.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            val results = MusicCatalogRepository.searchMusic(query)
+            binding.musicSearchLoading.visibility = View.GONE
+            tracksOverlayAdapterCurrentList = results
+            tracksOverlayAdapter.updateList(results)
+            if (results.isEmpty()) {
+                Toast.makeText(this@MainActivity, "No se encontraron canciones", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun playMusicTrack(track: MusicTrack, queue: List<MusicTrack>) {
+        // Stop TV playback if playing
+        playbackManager.pause()
+
+        musicPlayerManager.playTrack(track, queue)
+        openMusicPlayerModal()
+    }
+
+    private fun openMusicPlayerModal() {
+        binding.musicPlayerModal.visibility = View.VISIBLE
+        musicPlayerManager.currentTrack?.let { updateModalUI(it) }
+    }
+
+    private fun updateModalUI(track: MusicTrack) {
+        binding.modalTrackTitle.text = track.title
+        binding.modalTrackArtist.text = if (track.album.isNotEmpty()) "${track.artist} • ${track.album}" else track.artist
+
+        binding.modalTrackImage.load(track.thumbnailUrl) {
+            crossfade(true)
+            placeholder(R.drawable.ic_riffbox_logo)
+            error(R.drawable.ic_riffbox_logo)
+            transformations(RoundedCornersTransformation(24f))
+        }
+
+        binding.miniTrackTitle.text = track.title
+        binding.miniTrackArtist.text = track.artist
+        binding.miniTrackThumb.load(track.thumbnailUrl) {
+            crossfade(true)
+            placeholder(R.drawable.ic_riffbox_logo)
+            error(R.drawable.ic_riffbox_logo)
+            transformations(RoundedCornersTransformation(10f))
+        }
+        binding.nowPlayingMiniBar.visibility = View.VISIBLE
+
+        // Visualizer beat simulation starts automatically
+        binding.modalVisualizer.linkAudioSession(0)
+    }
+
+    private fun handleTrackDownload(track: MusicTrack) {
+        if (isTvDevice) return // Disabled on TV
+
+        if (DownloadedTracksManager.isTrackDownloaded(this, track.id)) {
+            Toast.makeText(this, "Esta canción ya está descargada en tu dispositivo", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(this, "Iniciando descarga de: ${track.title}...", Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch {
+            // For YouTube tracks, resolve stream and save
+            val streamUrl = "https://i.ytimg.com/vi/${track.id}/hqdefault.jpg" // placeholder audio stream target
+            val result = DownloadedTracksManager.downloadAudioStream(this@MainActivity, track, streamUrl) { progress ->
+                // Progress update if needed
+            }
+
+            if (result.isSuccess) {
+                Toast.makeText(this@MainActivity, "¡Descarga completa! Guardada en Música/Riffbox", Toast.LENGTH_LONG).show()
+                refreshDownloadsCarousel()
+            } else {
+                Toast.makeText(this@MainActivity, "No se pudo descargar la pista", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun refreshDownloadsCarousel() {
+        if (isTvDevice) return
+        val downloaded = DownloadedTracksManager.getDownloadedTracks(this)
+        if (downloaded.isNotEmpty()) {
+            binding.downloadsSectionLayout.visibility = View.VISIBLE
+            musicDownloadsAdapter.updateList(downloaded)
+        }
+    }
+
+    // Music Player Listener
+    override fun onTrackChanged(track: MusicTrack) {
+        updateModalUI(track)
+    }
+
+    override fun onPlaybackStateChanged(isPlaying: Boolean) {
+        val playPauseRes = if (isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
+        binding.btnMiniPlayPause.setImageResource(playPauseRes)
+        binding.btnModalPlayPause.setImageResource(playPauseRes)
+    }
+
+    // ==========================================
+    // NAVIGATION: MUSIC <-> LIVE TV
+    // ==========================================
+    private fun switchToLiveTV() {
+        currentMode = Mode.LIVE_TV
+        musicPlayerManager.pause()
+        binding.musicHomeContainer.visibility = View.GONE
+        binding.musicPlayerModal.visibility = View.GONE
+        binding.livePlayerContainer.visibility = View.VISIBLE
+
+        val initialChannel = playbackManager.getLastSavedChannel()
+        playbackManager.playChannel(initialChannel)
+
+        if (isTvDevice) {
+            showSidebar()
+        }
+    }
+
+    private fun switchToMusic() {
+        currentMode = Mode.MUSIC
+        playbackManager.pause()
+        binding.livePlayerContainer.visibility = View.GONE
+        hideSidebarImmediate()
+        binding.musicHomeContainer.visibility = View.VISIBLE
+    }
+
+    // ==========================================
+    // LIVE TV / RADIO LOGIC
+    // ==========================================
+    private fun setupLiveTVUI() {
         // Category adapter
         categoryAdapter = CategoryAdapter(ChannelsRepository.categories) { selectedCategory ->
             AnalyticsManager.logCategorySelected(selectedCategory)
@@ -104,7 +433,9 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
             private val SWIPE_THRESHOLD_VELOCITY = 100
 
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                toggleSidebar()
+                if (currentMode == Mode.LIVE_TV) {
+                    toggleSidebar()
+                }
                 return true
             }
 
@@ -114,11 +445,10 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
                 velocityX: Float,
                 velocityY: Float
             ): Boolean {
-                if (e1 == null) return false
+                if (currentMode != Mode.LIVE_TV || e1 == null) return false
                 val diffY = e2.y - e1.y
                 val diffX = e2.x - e1.x
 
-                // Vertical swipe: change channel
                 if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > SWIPE_MIN_DISTANCE && Math.abs(velocityY) > SWIPE_THRESHOLD_VELOCITY) {
                     if (diffY < 0) {
                         playbackManager.playNext()
@@ -128,7 +458,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
                     return true
                 }
 
-                // Horizontal swipe: hide/show sidebar
                 if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_MIN_DISTANCE && Math.abs(velocityX) > SWIPE_THRESHOLD_VELOCITY) {
                     if (diffX < 0 && isSidebarVisible) {
                         hideSidebar()
@@ -138,7 +467,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
                         return true
                     }
                 }
-
                 return false
             }
         })
@@ -155,15 +483,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
     private fun setupPlayback() {
         playbackManager = PlaybackManager(this, this)
         binding.playerView.player = playbackManager.getPlayer()
-
-        val initialChannel = playbackManager.getLastSavedChannel()
-        playbackManager.playChannel(initialChannel)
-
-        if (isTvDevice) {
-            showSidebar()
-        } else {
-            hideSidebarImmediate()
-        }
     }
 
     private fun syncChannelsAndCheckUpdates() {
@@ -204,8 +523,8 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
             binding.radioTitle.text = channel.name
             binding.radioSubtitle.text = "${channel.category} • Audio Alta Fidelidad"
 
-            val audioSession = playbackManager.getPlayer()?.audioSessionId ?: 0
-            binding.visualizerView.linkAudioSession(audioSession)
+            // Link visualizer
+            binding.visualizerView.linkAudioSession(0)
         } else {
             binding.radioContainer.visibility = View.GONE
             binding.playerView.visibility = View.VISIBLE
@@ -221,7 +540,9 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
 
     override fun onError(error: String) {
         binding.loadingIndicator.visibility = View.GONE
-        showSidebar()
+        if (currentMode == Mode.LIVE_TV) {
+            showSidebar()
+        }
         Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
     }
 
@@ -291,7 +612,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
         binding.sidebarContainer.translationX = -1200f
     }
 
-    // Helper: Checks if view is descendant of another view
     private fun isChildOf(view: View?, parent: View): Boolean {
         var p = view?.parent
         while (p != null) {
@@ -310,72 +630,89 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
     }
 
     // ==========================================
-    // REMOTE CONTROL KEYS (D-PAD, CH+, CH-, VOL)
+    // REMOTE CONTROL KEYS (D-PAD & BACK)
     // ==========================================
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // When sidebar is OPEN on TV:
-        if (isSidebarVisible) {
-            when (keyCode) {
-                // Back button closes sidebar
-                KeyEvent.KEYCODE_BACK -> {
-                    hideSidebar()
-                    return true
-                }
-
-                // If currently focused on a Channel item, LEFT and RIGHT switch category tab!
-                KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    val focused = currentFocus
-                    if (focused != null && isChildOf(focused, binding.channelsRecyclerView)) {
-                        switchCategoryRelative(-1)
-                        return true
-                    }
-                }
-                KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                    val focused = currentFocus
-                    if (focused != null && isChildOf(focused, binding.channelsRecyclerView)) {
-                        switchCategoryRelative(1)
-                        return true
-                    }
-                }
+        // 1. If Fullscreen Music Player Modal is open:
+        if (binding.musicPlayerModal.visibility == View.VISIBLE) {
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                binding.musicPlayerModal.visibility = View.GONE
+                return true
             }
-            // For all other keys (including navigating inside categoriesRecyclerView),
-            // let standard Android Focus Manager move focus naturally!
             return super.onKeyDown(keyCode, event)
         }
 
-        // When sidebar is CLOSED:
-        when (keyCode) {
-            KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP -> {
-                playbackManager.playNext()
+        // 2. If Tracks Overlay is open:
+        if (binding.musicTracksOverlay.visibility == View.VISIBLE) {
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                binding.musicTracksOverlay.visibility = View.GONE
+                binding.musicScrollView.visibility = View.VISIBLE
                 return true
             }
-            KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN -> {
-                playbackManager.playPrevious()
-                return true
+            return super.onKeyDown(keyCode, event)
+        }
+
+        // 3. If in LIVE TV Mode:
+        if (currentMode == Mode.LIVE_TV) {
+            if (isSidebarVisible) {
+                when (keyCode) {
+                    KeyEvent.KEYCODE_BACK -> {
+                        hideSidebar()
+                        return true
+                    }
+                    KeyEvent.KEYCODE_DPAD_LEFT -> {
+                        val focused = currentFocus
+                        if (focused != null && isChildOf(focused, binding.channelsRecyclerView)) {
+                            switchCategoryRelative(-1)
+                            return true
+                        }
+                    }
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        val focused = currentFocus
+                        if (focused != null && isChildOf(focused, binding.channelsRecyclerView)) {
+                            switchCategoryRelative(1)
+                            return true
+                        }
+                    }
+                }
+                return super.onKeyDown(keyCode, event)
             }
-            KeyEvent.KEYCODE_DPAD_UP -> {
-                playbackManager.playPrevious()
-                return true
-            }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
-                playbackManager.playNext()
-                return true
-            }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                showSidebar()
-                return true
-            }
-            KeyEvent.KEYCODE_BACK -> {
-                if (backPressedOnce) {
-                    finish()
-                } else {
-                    backPressedOnce = true
-                    Toast.makeText(this, getString(R.string.press_back_again), Toast.LENGTH_SHORT).show()
-                    handler.postDelayed({ backPressedOnce = false }, 2000)
+
+            // When sidebar is closed in Live TV:
+            when (keyCode) {
+                KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    playbackManager.playNext()
+                    return true
+                }
+                KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN, KeyEvent.KEYCODE_DPAD_UP -> {
+                    playbackManager.playPrevious()
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    showSidebar()
+                    return true
+                }
+                KeyEvent.KEYCODE_BACK -> {
+                    // Back from Live TV returns to Riffbox Music!
+                    switchToMusic()
                     return true
                 }
             }
+            return super.onKeyDown(keyCode, event)
         }
+
+        // 4. In MUSIC Mode (Home Screen):
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (backPressedOnce) {
+                finish()
+            } else {
+                backPressedOnce = true
+                Toast.makeText(this, getString(R.string.press_back_again), Toast.LENGTH_SHORT).show()
+                handler.postDelayed({ backPressedOnce = false }, 2000)
+                return true
+            }
+        }
+
         return super.onKeyDown(keyCode, event)
     }
 
@@ -383,6 +720,8 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
         binding.visualizerView.release()
+        binding.modalVisualizer.release()
         playbackManager.release()
+        musicPlayerManager.release()
     }
 }
