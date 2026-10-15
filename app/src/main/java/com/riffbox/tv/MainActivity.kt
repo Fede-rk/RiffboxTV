@@ -45,7 +45,12 @@ import com.riffbox.tv.music.ui.MusicTrackVerticalAdapter
 import com.riffbox.tv.player.PlaybackManager
 import com.riffbox.tv.ui.CategoryAdapter
 import com.riffbox.tv.ui.ChannelAdapter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, MusicPlayerManager.MusicPlayerListener {
 
@@ -93,6 +98,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         setupGestures()
         setupPlayback()
         syncChannelsAndCheckUpdates()
+        checkDirectUpdate()
     }
 
     private fun requestNotificationPermission() {
@@ -118,8 +124,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     // ==========================================
     private fun setupMusicUI() {
         // Initialize Music Player Engine
-        musicPlayerManager = MusicPlayerManager(this, binding.youtubePlayerView, this)
-        lifecycle.addObserver(binding.youtubePlayerView)
+        musicPlayerManager = MusicPlayerManager(this, binding.musicAudioWebView, this)
 
         // 1. Categories Adapter
         musicCategoryAdapter = MusicCategoryAdapter(MusicCatalogRepository.categories) { category ->
@@ -401,6 +406,13 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.modalTrackTitle.text = track.title
         binding.modalTrackArtist.text = if (track.album.isNotEmpty()) "${track.artist} • ${track.album}" else track.artist
 
+        binding.modalArtworkImage.load(track.thumbnailUrl) {
+            crossfade(true)
+            placeholder(R.drawable.ic_riffbox_logo)
+            error(R.drawable.ic_riffbox_logo)
+            transformations(RoundedCornersTransformation(20f))
+        }
+
         binding.miniTrackTitle.text = track.title
         binding.miniTrackArtist.text = track.artist
         binding.miniTrackThumb.load(track.thumbnailUrl) {
@@ -671,6 +683,47 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
                 }
                 .setNegativeButton("Más tarde", null)
                 .show()
+        }
+    }
+
+    private fun checkDirectUpdate() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val url = URL("https://raw.githubusercontent.com/Fede-rk/RiffboxTV/main/channels.json")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.connectTimeout = 6000
+                conn.readTimeout = 6000
+                conn.setRequestProperty("User-Agent", "RiffboxTV-App")
+                if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                    val body = conn.inputStream.bufferedReader().use { it.readText() }
+                    val root = JSONObject(body)
+                    val vCode = root.optInt("latest_app_version_code", 0)
+                    val vName = root.optString("latest_app_version_name", "")
+                    val notes = root.optString("release_notes", "")
+                    val dlUrl = root.optString("download_url", "")
+                    if (vCode > BuildConfig.VERSION_CODE && dlUrl.isNotEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            if (!isFinishing && !isDestroyed) {
+                                AlertDialog.Builder(this@MainActivity)
+                                    .setTitle("🚀 Actualización Disponible (v$vName)")
+                                    .setMessage("$notes\n\n¿Deseas descargar la actualización ahora?")
+                                    .setPositiveButton("Actualizar Ahora") { _, _ ->
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(dlUrl))
+                                            startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(this@MainActivity, "No se pudo abrir el enlace", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    .setNegativeButton("Más tarde", null)
+                                    .show()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

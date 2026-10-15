@@ -576,32 +576,45 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="@+id/btnMinimizePlayer" />
 
-        <!-- Center 16:9 Video & Music Screen (Official Video + HQ Stereo Sound) -->
+        <!-- Center Square Album Art (Spotify / Harmony Style) -->
         <androidx.cardview.widget.CardView
-            android:id="@+id/modalPlayerCard"
+            android:id="@+id/modalArtworkCard"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginStart="20dp"
-            android:layout_marginEnd="20dp"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="6dp"
-            app:cardBackgroundColor="#000000"
-            app:layout_constraintDimensionRatio="16:9"
-            app:layout_constraintWidth_max="540dp"
+            android:layout_marginStart="36dp"
+            android:layout_marginEnd="36dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="12dp"
+            app:cardBackgroundColor="#1A1C22"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintWidth_max="360dp"
             app:layout_constraintBottom_toTopOf="@+id/modalTrackTitle"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/btnMinimizePlayer"
             app:layout_constraintVertical_chainStyle="packed">
 
-            <com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
-                android:id="@+id/youtubePlayerView"
+            <ImageView
+                android:id="@+id/modalArtworkImage"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                app:enableAutomaticInitialization="false" />
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_riffbox_logo" />
 
         </androidx.cardview.widget.CardView>
+
+        <!-- Native Audio Engine WebView (Positioned behind Artwork Card, full 240x240 size for reliable YouTube API playback) -->
+        <WebView
+            android:id="@+id/musicAudioWebView"
+            android:layout_width="240dp"
+            android:layout_height="240dp"
+            android:translationZ="-2dp"
+            app:layout_constraintBottom_toBottomOf="@+id/modalArtworkCard"
+            app:layout_constraintEnd_toEndOf="@+id/modalArtworkCard"
+            app:layout_constraintStart_toStartOf="@+id/modalArtworkCard"
+            app:layout_constraintTop_toTopOf="@+id/modalArtworkCard" />
 
         <!-- Track Title -->
         <TextView
@@ -620,7 +633,7 @@
             app:layout_constraintBottom_toTopOf="@+id/modalTrackArtist"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/modalPlayerCard" />
+            app:layout_constraintTop_toBottomOf="@+id/modalArtworkCard" />
 
         <!-- Track Artist & Album -->
         <TextView

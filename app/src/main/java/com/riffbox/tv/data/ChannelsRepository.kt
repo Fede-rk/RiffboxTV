@@ -195,7 +195,12 @@ object ChannelsRepository {
 
     fun getRemoteUrl(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_REMOTE_URL, DEFAULT_REMOTE_URL) ?: DEFAULT_REMOTE_URL
+        val saved = prefs.getString(KEY_REMOTE_URL, null)
+        if (saved == null || saved.contains("federico-riffbox") || !saved.startsWith("http")) {
+            prefs.edit().putString(KEY_REMOTE_URL, DEFAULT_REMOTE_URL).apply()
+            return DEFAULT_REMOTE_URL
+        }
+        return saved
     }
 
     fun setRemoteUrl(context: Context, url: String) {

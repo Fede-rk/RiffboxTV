@@ -1,19 +1,22 @@
 package com.riffbox.tv.music.player
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.riffbox.tv.music.model.MusicTrack
 
 class MusicPlayerManager(
     private val context: Context,
-    private val youTubePlayerView: YouTubePlayerView,
+    private val webView: WebView,
     private val listener: MusicPlayerListener
 ) {
 
@@ -22,11 +25,8 @@ class MusicPlayerManager(
         fun onPlaybackStateChanged(isPlaying: Boolean)
     }
 
-    private var activeYouTubePlayer: YouTubePlayer? = null
-    private var isYtReady = false
-    private var pendingTrackToPlay: MusicTrack? = null
-
     private var localExoPlayer: ExoPlayer? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     var currentTrack: MusicTrack? = null
         private set
@@ -38,9 +38,13 @@ class MusicPlayerManager(
     var isPlaying: Boolean = false
         private set
 
+    private var isYtPlayerReady = false
+    private var pendingTrackToPlay: MusicTrack? = null
+    private var lastErrorTime = 0L
+
     init {
         initLocalPlayer()
-        initYouTubePlayer()
+        initWebView()
     }
 
     private fun initLocalPlayer() {
@@ -62,56 +66,161 @@ class MusicPlayerManager(
         }
     }
 
-    private fun initYouTubePlayer() {
-        youTubePlayerView.enableBackgroundPlayback(true)
-        val options = IFramePlayerOptions.Builder()
-            .controls(1)
-            .autoplay(1)
-            .build()
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun initWebView() {
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            databaseEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+            cacheMode = WebSettings.LOAD_DEFAULT
+            userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
 
-        youTubePlayerView.initialize(object : AbstractYouTubePlayerListener() {
-            override fun onReady(youTubePlayer: YouTubePlayer) {
-                Log.d("MusicPlayer", "YouTube player ready!")
-                activeYouTubePlayer = youTubePlayer
-                isYtReady = true
-                try {
-                    youTubePlayer.unMute()
-                    youTubePlayer.setVolume(100)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-                pendingTrackToPlay?.let { track ->
-                    youTubePlayer.loadVideo(track.id, 0f)
-                    pendingTrackToPlay = null
-                }
-            }
+        webView.webChromeClient = WebChromeClient()
 
-            override fun onStateChange(youTubePlayer: YouTubePlayer, state: PlayerConstants.PlayerState) {
-                Log.d("MusicPlayer", "YouTube state: $state")
-                if (currentTrack?.isDownloaded != true) {
-                    when (state) {
-                        PlayerConstants.PlayerState.PLAYING -> {
-                            this@MusicPlayerManager.isPlaying = true
-                            listener.onPlaybackStateChanged(true)
-                        }
-                        PlayerConstants.PlayerState.PAUSED -> {
-                            this@MusicPlayerManager.isPlaying = false
-                            listener.onPlaybackStateChanged(false)
-                        }
-                        PlayerConstants.PlayerState.ENDED -> {
-                            this@MusicPlayerManager.isPlaying = false
-                            playNext()
-                        }
-                        else -> {}
+        webView.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun onPlayerReady() {
+                mainHandler.post {
+                    Log.d("MusicPlayer", "YouTube IFrame Engine initialized and ready!")
+                    isYtPlayerReady = true
+                    pendingTrackToPlay?.let { track ->
+                        val t = track
+                        pendingTrackToPlay = null
+                        playTrack(t, currentQueue)
                     }
                 }
             }
 
-            override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
-                Log.e("MusicPlayer", "YouTube error: $error, skipping to next track")
-                playNext()
+            @JavascriptInterface
+            fun onState(playing: Boolean) {
+                mainHandler.post {
+                    this@MusicPlayerManager.isPlaying = playing
+                    listener.onPlaybackStateChanged(playing)
+                }
             }
-        }, options)
+
+            @JavascriptInterface
+            fun onEnded() {
+                mainHandler.post {
+                    playNext()
+                }
+            }
+
+            @JavascriptInterface
+            fun onError(code: Int) {
+                mainHandler.post {
+                    Log.e("MusicPlayer", "YouTube IFrame player error: $code")
+                    val now = System.currentTimeMillis()
+                    if (now - lastErrorTime > 1500) {
+                        lastErrorTime = now
+                        playNext()
+                    }
+                }
+            }
+        }, "RiffboxBridge")
+
+        val htmlContent = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+                    #player { width: 100%; height: 100%; }
+                </style>
+            </head>
+            <body>
+                <div id="player"></div>
+                <script src="https://www.youtube.com/iframe_api"></script>
+                <script>
+                    var ytPlayer = null;
+                    var isReady = false;
+                    var queuedVid = null;
+
+                    function onYouTubeIframeAPIReady() {
+                        ytPlayer = new YT.Player('player', {
+                            height: '100%',
+                            width: '100%',
+                            playerVars: {
+                                'autoplay': 1,
+                                'controls': 0,
+                                'playsinline': 1,
+                                'origin': 'https://www.youtube.com',
+                                'enablejsapi': 1,
+                                'rel': 0,
+                                'fs': 0,
+                                'iv_load_policy': 3
+                            },
+                            events: {
+                                'onReady': function(e) {
+                                    isReady = true;
+                                    try {
+                                        ytPlayer.unMute();
+                                        ytPlayer.setVolume(100);
+                                    } catch(err) {}
+                                    if (window.RiffboxBridge) window.RiffboxBridge.onPlayerReady();
+                                    if (queuedVid) {
+                                        var v = queuedVid;
+                                        queuedVid = null;
+                                        loadVideo(v);
+                                    }
+                                },
+                                'onStateChange': function(e) {
+                                    if (window.RiffboxBridge) {
+                                        if (e.data === 1) window.RiffboxBridge.onState(true);
+                                        else if (e.data === 2) window.RiffboxBridge.onState(false);
+                                        else if (e.data === 0) window.RiffboxBridge.onEnded();
+                                    }
+                                },
+                                'onError': function(e) {
+                                    if (window.RiffboxBridge) window.RiffboxBridge.onError(e.data);
+                                }
+                            }
+                        });
+                    }
+
+                    function loadVideo(vid) {
+                        if (isReady && ytPlayer && ytPlayer.loadVideoById) {
+                            try {
+                                ytPlayer.loadVideoById(vid);
+                                ytPlayer.unMute();
+                                ytPlayer.setVolume(100);
+                                ytPlayer.playVideo();
+                            } catch(err) {
+                                console.log('loadVideo error: ' + err);
+                            }
+                        } else {
+                            queuedVid = vid;
+                        }
+                    }
+
+                    function pauseVideo() {
+                        if (isReady && ytPlayer && ytPlayer.pauseVideo) {
+                            ytPlayer.pauseVideo();
+                        }
+                    }
+
+                    function resumeVideo() {
+                        if (isReady && ytPlayer && ytPlayer.playVideo) {
+                            ytPlayer.playVideo();
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        """.trimIndent()
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                Log.d("MusicPlayer", "WebView player shell loaded")
+            }
+        }
+
+        webView.loadDataWithBaseURL("https://www.youtube.com", htmlContent, "text/html", "UTF-8", null)
     }
 
     fun playTrack(track: MusicTrack, queue: List<MusicTrack> = listOf(track)) {
@@ -124,7 +233,7 @@ class MusicPlayerManager(
 
         if (track.isDownloaded && track.localFilePath != null) {
             // Play local offline file with ExoPlayer
-            activeYouTubePlayer?.pause()
+            webView.evaluateJavascript("pauseVideo();", null)
             localExoPlayer?.let { player ->
                 player.stop()
                 player.clearMediaItems()
@@ -134,10 +243,10 @@ class MusicPlayerManager(
                 player.play()
             }
         } else {
-            // Play online track with YouTubePlayer
+            // Play online track with official YouTube IFrame engine
             localExoPlayer?.pause()
-            if (isYtReady && activeYouTubePlayer != null) {
-                activeYouTubePlayer?.loadVideo(track.id, 0f)
+            if (isYtPlayerReady) {
+                webView.evaluateJavascript("loadVideo('${track.id}');", null)
             } else {
                 pendingTrackToPlay = track
             }
@@ -158,22 +267,25 @@ class MusicPlayerManager(
         if (currentTrack?.isDownloaded == true) {
             localExoPlayer?.play()
         } else {
-            activeYouTubePlayer?.play()
+            webView.evaluateJavascript("resumeVideo();", null)
         }
     }
 
     fun pause() {
         isPlaying = false
         listener.onPlaybackStateChanged(false)
-        localExoPlayer?.pause()
-        activeYouTubePlayer?.pause()
+        if (currentTrack?.isDownloaded == true) {
+            localExoPlayer?.pause()
+        } else {
+            webView.evaluateJavascript("pauseVideo();", null)
+        }
     }
 
     fun stop() {
         isPlaying = false
         listener.onPlaybackStateChanged(false)
         localExoPlayer?.stop()
-        activeYouTubePlayer?.pause()
+        webView.evaluateJavascript("pauseVideo();", null)
     }
 
     fun playNext() {
@@ -191,6 +303,7 @@ class MusicPlayerManager(
     fun release() {
         localExoPlayer?.release()
         localExoPlayer = null
-        youTubePlayerView.release()
+        webView.evaluateJavascript("pauseVideo();", null)
+        webView.destroy()
     }
 }

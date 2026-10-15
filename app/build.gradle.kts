@@ -12,8 +12,8 @@ android {
         applicationId = "com.riffbox.tv"
         minSdk = 21
         targetSdk = 34
-        versionCode = 9
-        versionName = "1.4.1"
+        versionCode = 10
+        versionName = "1.4.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -82,7 +82,4 @@ dependencies {
     // Firebase Analytics (Google)
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-analytics-ktx")
-
-    // Android YouTube Player Engine
-    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.1")
 }
