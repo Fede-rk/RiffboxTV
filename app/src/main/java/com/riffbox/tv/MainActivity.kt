@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     // ==========================================
     private fun setupMusicUI() {
         // Initialize Music Player Engine
-        musicPlayerManager = MusicPlayerManager(this, binding.musicAudioWebView, this)
+        musicPlayerManager = MusicPlayerManager(this, this)
 
         // 1. Categories Adapter
         musicCategoryAdapter = MusicCategoryAdapter(MusicCatalogRepository.categories) { category ->

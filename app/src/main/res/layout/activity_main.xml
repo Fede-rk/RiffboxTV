@@ -605,16 +605,7 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- Native Audio Engine WebView (Positioned behind Artwork Card, full 240x240 size for reliable YouTube API playback) -->
-        <WebView
-            android:id="@+id/musicAudioWebView"
-            android:layout_width="240dp"
-            android:layout_height="240dp"
-            android:translationZ="-2dp"
-            app:layout_constraintBottom_toBottomOf="@+id/modalArtworkCard"
-            app:layout_constraintEnd_toEndOf="@+id/modalArtworkCard"
-            app:layout_constraintStart_toStartOf="@+id/modalArtworkCard"
-            app:layout_constraintTop_toTopOf="@+id/modalArtworkCard" />
+
 
         <!-- Track Title -->
         <TextView
