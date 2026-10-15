@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     private lateinit var musicArtistAdapter: MusicArtistAdapter
     private lateinit var musicDownloadsAdapter: MusicTrackHorizontalAdapter
     private lateinit var tracksOverlayAdapter: MusicTrackVerticalAdapter
+    private var isPlayerModalOpen = false
 
     private var isTvDevice = false
     private val handler = Handler(Looper.getMainLooper())
@@ -147,11 +148,13 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         // 4. Offline Downloads (Smartphones only)
         if (isTvDevice) {
             binding.downloadsSectionLayout.visibility = View.GONE
-            binding.btnModalDownload.visibility = View.GONE
         } else {
             val downloadedTracks = DownloadedTracksManager.getDownloadedTracks(this)
             if (downloadedTracks.isNotEmpty()) {
                 binding.downloadsSectionLayout.visibility = View.VISIBLE
+            }
+            binding.downloadsHeaderLayout.setOnClickListener {
+                openDownloadsTracks()
             }
             musicDownloadsAdapter = MusicTrackHorizontalAdapter(downloadedTracks) { track ->
                 playMusicTrack(track, downloadedTracks)
@@ -169,7 +172,10 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
                 playMusicTrack(track, tracksOverlayAdapterCurrentList)
             },
             onDownloadClick = { track ->
-                handleTrackDownload(track)
+                confirmTrackDownload(track)
+            },
+            onDeleteClick = { track ->
+                confirmTrackDelete(track)
             }
         )
         binding.tracksRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -216,7 +222,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
 
         // Fullscreen Player Modal Controls
         binding.btnMinimizePlayer.setOnClickListener {
-            binding.musicPlayerModal.visibility = View.GONE
+            closeMusicPlayerModal()
         }
         binding.btnModalPlayPause.setOnClickListener {
             musicPlayerManager.togglePlayPause()
@@ -226,11 +232,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         }
         binding.btnModalPrev.setOnClickListener {
             musicPlayerManager.playPrevious()
-        }
-        binding.btnModalDownload.setOnClickListener {
-            musicPlayerManager.currentTrack?.let { track ->
-                handleTrackDownload(track)
-            }
         }
     }
 
@@ -377,8 +378,23 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     private fun openMusicPlayerModal() {
-        binding.musicPlayerModal.visibility = View.VISIBLE
+        isPlayerModalOpen = true
+        binding.musicPlayerModal.animate()
+            .translationY(0f)
+            .alpha(1f)
+            .setDuration(250)
+            .start()
         musicPlayerManager.currentTrack?.let { updateModalUI(it) }
+    }
+
+    private fun closeMusicPlayerModal() {
+        isPlayerModalOpen = false
+        val screenHeight = resources.displayMetrics.heightPixels.toFloat().coerceAtLeast(1920f)
+        binding.musicPlayerModal.animate()
+            .translationY(screenHeight + 500f)
+            .alpha(0f)
+            .setDuration(250)
+            .start()
     }
 
     private fun updateModalUI(track: MusicTrack) {
@@ -394,6 +410,74 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             transformations(RoundedCornersTransformation(10f))
         }
         binding.nowPlayingMiniBar.visibility = View.VISIBLE
+    }
+
+    private fun confirmTrackDownload(track: MusicTrack) {
+        if (isTvDevice) return
+        if (DownloadedTracksManager.isTrackDownloaded(this, track.id)) {
+            Toast.makeText(this, "Esta canción ya está descargada en tu dispositivo", Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Descargar canción")
+            .setMessage("¿Deseas descargar '${track.title} - ${track.artist}' para escuchar sin conexión?")
+            .setPositiveButton("Descargar") { _, _ ->
+                handleTrackDownload(track)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun confirmTrackDelete(track: MusicTrack) {
+        AlertDialog.Builder(this)
+            .setTitle("Eliminar descarga")
+            .setMessage("¿Deseas eliminar '${track.title}' de tu dispositivo?")
+            .setPositiveButton("Eliminar") { _, _ ->
+                DownloadedTracksManager.removeTrack(this, track.id)
+                Toast.makeText(this, "Canción eliminada", Toast.LENGTH_SHORT).show()
+                refreshDownloadsCarousel()
+                val isDownloadsView = binding.tvTracksOverlayTitle.text.contains("Guardadas")
+                val updated = tracksOverlayAdapterCurrentList.map {
+                    if (it.id == track.id) it.copy(isDownloaded = false, localFilePath = null) else it
+                }.filter {
+                    if (isDownloadsView) it.id != track.id else true
+                }
+                tracksOverlayAdapterCurrentList = updated
+                tracksOverlayAdapter.updateList(updated)
+                if (isDownloadsView) {
+                    binding.tvOverlayHeaderSubtitle.text = "${updated.size} canciones en tu dispositivo"
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun openDownloadsTracks() {
+        val downloaded = DownloadedTracksManager.getDownloadedTracks(this)
+        binding.musicScrollView.visibility = View.GONE
+        binding.musicTracksOverlay.visibility = View.VISIBLE
+        binding.tvTracksOverlayTitle.text = "💾 Canciones Guardadas"
+        binding.musicSearchLoading.visibility = View.GONE
+
+        binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.ivOverlayHeaderThumb.setImageResource(R.drawable.ic_riffbox_logo)
+        binding.tvOverlayHeaderName.text = "Canciones Guardadas"
+        binding.tvOverlayHeaderSubtitle.text = "${downloaded.size} canciones en tu dispositivo"
+
+        binding.btnOverlayPlayAll.setOnClickListener {
+            if (downloaded.isNotEmpty()) {
+                playMusicTrack(downloaded.first(), downloaded)
+            }
+        }
+        binding.btnOverlayShuffle.setOnClickListener {
+            if (downloaded.isNotEmpty()) {
+                val shuffled = downloaded.shuffled()
+                playMusicTrack(shuffled.first(), shuffled)
+            }
+        }
+
+        tracksOverlayAdapterCurrentList = downloaded
+        tracksOverlayAdapter.updateList(downloaded)
     }
 
     private fun handleTrackDownload(track: MusicTrack) {
@@ -414,8 +498,13 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             }
 
             if (result.isSuccess) {
-                Toast.makeText(this@MainActivity, "¡Descarga completa! Guardada en Música/Riffbox", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MainActivity, "¡Descarga completa! Guardada en tu dispositivo", Toast.LENGTH_LONG).show()
                 refreshDownloadsCarousel()
+                val updated = tracksOverlayAdapterCurrentList.map {
+                    if (it.id == track.id) it.copy(isDownloaded = true) else it
+                }
+                tracksOverlayAdapterCurrentList = updated
+                tracksOverlayAdapter.updateList(updated)
             } else {
                 Toast.makeText(this@MainActivity, "No se pudo descargar la pista", Toast.LENGTH_SHORT).show()
             }
@@ -428,6 +517,8 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         if (downloaded.isNotEmpty()) {
             binding.downloadsSectionLayout.visibility = View.VISIBLE
             musicDownloadsAdapter.updateList(downloaded)
+        } else {
+            binding.downloadsSectionLayout.visibility = View.GONE
         }
     }
 
@@ -449,7 +540,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         currentMode = Mode.LIVE_TV
         musicPlayerManager.pause()
         binding.musicHomeContainer.visibility = View.GONE
-        binding.musicPlayerModal.visibility = View.GONE
+        closeMusicPlayerModal()
         binding.livePlayerContainer.visibility = View.VISIBLE
 
         val initialChannel = playbackManager.getLastSavedChannel()
@@ -700,9 +791,9 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     // ==========================================
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         // 1. If Fullscreen Music Player Modal is open:
-        if (binding.musicPlayerModal.visibility == View.VISIBLE) {
+        if (isPlayerModalOpen) {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
-                binding.musicPlayerModal.visibility = View.GONE
+                closeMusicPlayerModal()
                 return true
             }
             return super.onKeyDown(keyCode, event)

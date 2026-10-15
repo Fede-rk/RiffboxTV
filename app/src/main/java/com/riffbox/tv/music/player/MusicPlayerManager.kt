@@ -1,11 +1,13 @@
 package com.riffbox.tv.music.player
 
 import android.content.Context
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.riffbox.tv.music.model.MusicTrack
 
@@ -61,11 +63,23 @@ class MusicPlayerManager(
     }
 
     private fun initYouTubePlayer() {
-        youTubePlayerView.enableAutomaticInitialization = false
+        youTubePlayerView.enableBackgroundPlayback(true)
+        val options = IFramePlayerOptions.Builder()
+            .controls(1)
+            .autoplay(1)
+            .build()
+
         youTubePlayerView.initialize(object : AbstractYouTubePlayerListener() {
             override fun onReady(youTubePlayer: YouTubePlayer) {
+                Log.d("MusicPlayer", "YouTube player ready!")
                 activeYouTubePlayer = youTubePlayer
                 isYtReady = true
+                try {
+                    youTubePlayer.unMute()
+                    youTubePlayer.setVolume(100)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
                 pendingTrackToPlay?.let { track ->
                     youTubePlayer.loadVideo(track.id, 0f)
                     pendingTrackToPlay = null
@@ -73,6 +87,7 @@ class MusicPlayerManager(
             }
 
             override fun onStateChange(youTubePlayer: YouTubePlayer, state: PlayerConstants.PlayerState) {
+                Log.d("MusicPlayer", "YouTube state: $state")
                 if (currentTrack?.isDownloaded != true) {
                     when (state) {
                         PlayerConstants.PlayerState.PLAYING -> {
@@ -91,7 +106,12 @@ class MusicPlayerManager(
                     }
                 }
             }
-        })
+
+            override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
+                Log.e("MusicPlayer", "YouTube error: $error, skipping to next track")
+                playNext()
+            }
+        }, options)
     }
 
     fun playTrack(track: MusicTrack, queue: List<MusicTrack> = listOf(track)) {

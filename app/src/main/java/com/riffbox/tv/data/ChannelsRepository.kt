@@ -24,7 +24,7 @@ object ChannelsRepository {
     private const val PREFS_NAME = "riffbox_remote_prefs"
     private const val KEY_REMOTE_URL = "remote_channels_url"
 
-    const val DEFAULT_REMOTE_URL = "https://raw.githubusercontent.com/federico-riffbox/riffbox-channels/main/channels.json"
+    const val DEFAULT_REMOTE_URL = "https://raw.githubusercontent.com/Fede-rk/RiffboxTV/main/channels.json"
 
     val defaultCategories = listOf(
         "Todas",

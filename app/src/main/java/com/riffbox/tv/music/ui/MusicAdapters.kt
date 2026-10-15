@@ -174,7 +174,8 @@ class MusicTrackVerticalAdapter(
     private var tracks: List<MusicTrack>,
     private val isTvDevice: Boolean,
     private val onTrackClick: (MusicTrack) -> Unit,
-    private val onDownloadClick: ((MusicTrack) -> Unit)? = null
+    private val onDownloadClick: ((MusicTrack) -> Unit)? = null,
+    private val onDeleteClick: ((MusicTrack) -> Unit)? = null
 ) : RecyclerView.Adapter<MusicTrackVerticalAdapter.ViewHolder>() {
 
     class ViewHolder(val binding: ItemMusicTrackVerticalBinding) : RecyclerView.ViewHolder(binding.root)
@@ -196,16 +197,21 @@ class MusicTrackVerticalAdapter(
             transformations(RoundedCornersTransformation(12f))
         }
 
-        // Hide download button on Android TV; show on phones
+        // Hide download/delete button on Android TV; show on phones
         if (isTvDevice) {
             holder.binding.btnDownload.visibility = View.GONE
         } else {
             holder.binding.btnDownload.visibility = View.VISIBLE
-            holder.binding.btnDownload.setImageResource(
-                if (track.isDownloaded) R.drawable.ic_downloaded else R.drawable.ic_download
-            )
-            holder.binding.btnDownload.setOnClickListener {
-                onDownloadClick?.invoke(track)
+            if (track.isDownloaded) {
+                holder.binding.btnDownload.setImageResource(R.drawable.ic_delete)
+                holder.binding.btnDownload.setOnClickListener {
+                    onDeleteClick?.invoke(track)
+                }
+            } else {
+                holder.binding.btnDownload.setImageResource(R.drawable.ic_download)
+                holder.binding.btnDownload.setOnClickListener {
+                    onDownloadClick?.invoke(track)
+                }
             }
         }
 

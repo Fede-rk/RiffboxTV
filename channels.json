@@ -1,8 +1,8 @@
 {
-  "version": 8,
-  "latest_app_version_code": 8,
-  "latest_app_version_name": "1.4.0",
-  "release_notes": "Riffbox v1.4.0: Gran expansión de catálogo con 12 listas masivas (+600 canciones), nuevos géneros (pop, fiesta/cumbia, metal extremo, metal nacional), perfiles de artistas estilo Spotify con 'Reproducir' y 'Aleatorio', y Radio Inteligente que continúa con temas similares al buscar canciones.",
+  "version": 9,
+  "latest_app_version_code": 9,
+  "latest_app_version_name": "1.4.1",
+  "release_notes": "Riffbox v1.4.1: Corrección completa de reproducción de audio en estéreo y en segundo plano, confirmación de descarga para evitar toques accidentales, botón de papelera para eliminar canciones guardadas fácilmente y sincronización automática de actualizaciones.",
   "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [
     "Todas",
