@@ -23,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import coil.load
+import coil.transform.CircleCropTransformation
 import coil.transform.RoundedCornersTransformation
 import com.riffbox.tv.analytics.AnalyticsManager
 import com.riffbox.tv.data.AppUpdateInfo
@@ -241,10 +242,29 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.tvTracksOverlayTitle.text = "${category.icon} ${category.title}"
         binding.musicSearchLoading.visibility = View.VISIBLE
 
+        binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.ivOverlayHeaderThumb.setImageResource(R.drawable.ic_riffbox_logo)
+        binding.tvOverlayHeaderName.text = "${category.icon} ${category.title}"
+        binding.tvOverlayHeaderSubtitle.text = "Cargando lo mejor del género..."
+
         lifecycleScope.launch {
             val results = MusicCatalogRepository.searchMusic(category.query)
             val fullList = MusicCatalogRepository.getTracksForCategory(category, results)
             binding.musicSearchLoading.visibility = View.GONE
+            binding.tvOverlayHeaderSubtitle.text = "${fullList.size} canciones seleccionadas"
+
+            binding.btnOverlayPlayAll.setOnClickListener {
+                if (fullList.isNotEmpty()) {
+                    playMusicTrack(fullList.first(), fullList)
+                }
+            }
+            binding.btnOverlayShuffle.setOnClickListener {
+                if (fullList.isNotEmpty()) {
+                    val shuffled = fullList.shuffled()
+                    playMusicTrack(shuffled.first(), shuffled)
+                }
+            }
+
             tracksOverlayAdapterCurrentList = fullList
             tracksOverlayAdapter.updateList(fullList)
         }
@@ -256,6 +276,29 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.tvTracksOverlayTitle.text = playlist.title
         binding.musicSearchLoading.visibility = View.GONE
 
+        // Setup Playlist Header Banner
+        binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.ivOverlayHeaderThumb.load(playlist.coverUrl) {
+            crossfade(true)
+            placeholder(R.drawable.ic_riffbox_logo)
+            error(R.drawable.ic_riffbox_logo)
+            transformations(RoundedCornersTransformation(14f))
+        }
+        binding.tvOverlayHeaderName.text = playlist.title
+        binding.tvOverlayHeaderSubtitle.text = "${playlist.tracks.size} canciones • ${playlist.badge}"
+
+        binding.btnOverlayPlayAll.setOnClickListener {
+            if (playlist.tracks.isNotEmpty()) {
+                playMusicTrack(playlist.tracks.first(), playlist.tracks)
+            }
+        }
+        binding.btnOverlayShuffle.setOnClickListener {
+            if (playlist.tracks.isNotEmpty()) {
+                val shuffled = playlist.tracks.shuffled()
+                playMusicTrack(shuffled.first(), shuffled)
+            }
+        }
+
         tracksOverlayAdapterCurrentList = playlist.tracks
         tracksOverlayAdapter.updateList(playlist.tracks)
     }
@@ -263,13 +306,38 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     private fun openArtistTracks(artist: MusicArtist) {
         binding.musicScrollView.visibility = View.GONE
         binding.musicTracksOverlay.visibility = View.VISIBLE
-        binding.tvTracksOverlayTitle.text = "Canciones de ${artist.name}"
+        binding.tvTracksOverlayTitle.text = artist.name
         binding.musicSearchLoading.visibility = View.VISIBLE
+
+        // Setup Artist Profile Header Banner (Spotify style)
+        binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.ivOverlayHeaderThumb.load(artist.imageUrl) {
+            crossfade(true)
+            placeholder(R.drawable.ic_riffbox_logo)
+            error(R.drawable.ic_riffbox_logo)
+            transformations(CircleCropTransformation())
+        }
+        binding.tvOverlayHeaderName.text = artist.name
+        binding.tvOverlayHeaderSubtitle.text = "${artist.genre} • Discografía y Éxitos"
 
         lifecycleScope.launch {
             val results = MusicCatalogRepository.searchMusic(artist.query)
             val fullList = MusicCatalogRepository.getTracksForArtist(artist, results)
             binding.musicSearchLoading.visibility = View.GONE
+            binding.tvOverlayHeaderSubtitle.text = "${artist.genre} • ${fullList.size} canciones"
+
+            binding.btnOverlayPlayAll.setOnClickListener {
+                if (fullList.isNotEmpty()) {
+                    playMusicTrack(fullList.first(), fullList)
+                }
+            }
+            binding.btnOverlayShuffle.setOnClickListener {
+                if (fullList.isNotEmpty()) {
+                    val shuffled = fullList.shuffled()
+                    playMusicTrack(shuffled.first(), shuffled)
+                }
+            }
+
             tracksOverlayAdapterCurrentList = fullList
             tracksOverlayAdapter.updateList(fullList)
         }
@@ -278,7 +346,8 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     private fun performMusicSearch(query: String) {
         binding.musicScrollView.visibility = View.GONE
         binding.musicTracksOverlay.visibility = View.VISIBLE
-        binding.tvTracksOverlayTitle.text = "Resultados para: $query"
+        binding.tvTracksOverlayTitle.text = "Búsqueda: $query"
+        binding.overlayProfileHeader.visibility = View.GONE
         binding.musicSearchLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
@@ -296,7 +365,14 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         // Stop TV playback if playing
         playbackManager.pause()
 
-        musicPlayerManager.playTrack(track, queue)
+        // If playing from outside or a single track, generate a smart Radio queue of similar songs
+        val effectiveQueue = if (queue.size <= 1) {
+            MusicCatalogRepository.buildRadioQueue(track)
+        } else {
+            queue
+        }
+
+        musicPlayerManager.playTrack(track, effectiveQueue)
         openMusicPlayerModal()
     }
 
