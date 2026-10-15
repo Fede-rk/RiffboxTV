@@ -243,9 +243,10 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
 
         lifecycleScope.launch {
             val results = MusicCatalogRepository.searchMusic(category.query)
+            val fullList = MusicCatalogRepository.getTracksForCategory(category, results)
             binding.musicSearchLoading.visibility = View.GONE
-            tracksOverlayAdapterCurrentList = results
-            tracksOverlayAdapter.updateList(results)
+            tracksOverlayAdapterCurrentList = fullList
+            tracksOverlayAdapter.updateList(fullList)
         }
     }
 
@@ -267,9 +268,10 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
 
         lifecycleScope.launch {
             val results = MusicCatalogRepository.searchMusic(artist.query)
+            val fullList = MusicCatalogRepository.getTracksForArtist(artist, results)
             binding.musicSearchLoading.visibility = View.GONE
-            tracksOverlayAdapterCurrentList = results
-            tracksOverlayAdapter.updateList(results)
+            tracksOverlayAdapterCurrentList = fullList
+            tracksOverlayAdapter.updateList(fullList)
         }
     }
 
