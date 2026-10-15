@@ -116,7 +116,8 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     // ==========================================
     private fun setupMusicUI() {
         // Initialize Music Player Engine
-        musicPlayerManager = MusicPlayerManager(this, binding.hiddenYouTubePlayerView, this)
+        musicPlayerManager = MusicPlayerManager(this, binding.youtubePlayerView, this)
+        lifecycle.addObserver(binding.youtubePlayerView)
 
         // 1. Categories Adapter
         musicCategoryAdapter = MusicCategoryAdapter(MusicCatalogRepository.categories) { category ->
@@ -306,13 +307,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.modalTrackTitle.text = track.title
         binding.modalTrackArtist.text = if (track.album.isNotEmpty()) "${track.artist} • ${track.album}" else track.artist
 
-        binding.modalTrackImage.load(track.thumbnailUrl) {
-            crossfade(true)
-            placeholder(R.drawable.ic_riffbox_logo)
-            error(R.drawable.ic_riffbox_logo)
-            transformations(RoundedCornersTransformation(24f))
-        }
-
         binding.miniTrackTitle.text = track.title
         binding.miniTrackArtist.text = track.artist
         binding.miniTrackThumb.load(track.thumbnailUrl) {
@@ -322,9 +316,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             transformations(RoundedCornersTransformation(10f))
         }
         binding.nowPlayingMiniBar.visibility = View.VISIBLE
-
-        // Visualizer beat simulation starts automatically
-        binding.modalVisualizer.linkAudioSession(0)
     }
 
     private fun handleTrackDownload(track: MusicTrack) {
@@ -340,7 +331,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         lifecycleScope.launch {
             // For YouTube tracks, resolve stream and save
             val streamUrl = "https://i.ytimg.com/vi/${track.id}/hqdefault.jpg" // placeholder audio stream target
-            val result = DownloadedTracksManager.downloadAudioStream(this@MainActivity, track, streamUrl) { progress ->
+            val result = DownloadedTracksManager.downloadAudioStream(this@MainActivity, track, streamUrl) { _ ->
                 // Progress update if needed
             }
 
@@ -522,9 +513,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             binding.radioContainer.visibility = View.VISIBLE
             binding.radioTitle.text = channel.name
             binding.radioSubtitle.text = "${channel.category} • Audio Alta Fidelidad"
-
-            // Link visualizer
-            binding.visualizerView.linkAudioSession(0)
         } else {
             binding.radioContainer.visibility = View.GONE
             binding.playerView.visibility = View.VISIBLE
@@ -719,8 +707,6 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
-        binding.visualizerView.release()
-        binding.modalVisualizer.release()
         playbackManager.release()
         musicPlayerManager.release()
     }

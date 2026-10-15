@@ -1,8 +1,8 @@
 {
-  "version": 5,
-  "latest_app_version_code": 5,
-  "latest_app_version_name": "1.3.0",
-  "release_notes": "Riffbox Music On-Demand: Navegación estilo Netflix, listas de reproducción curadas, buscador de canciones, visualizador analógico fluido y descargas offline en smartphones.",
+  "version": 6,
+  "latest_app_version_code": 6,
+  "latest_app_version_name": "1.3.1",
+  "release_notes": "Riffbox v1.3.1: Se eliminaron las barras animadas, se corrigieron los menús y tarjetas en categorías y artistas, y se restauró la reproducción de audio estéreo y videoclips oficiales.",
   "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [
     "Todas",

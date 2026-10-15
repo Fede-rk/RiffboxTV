@@ -22,6 +22,7 @@ class MusicPlayerManager(
 
     private var activeYouTubePlayer: YouTubePlayer? = null
     private var isYtReady = false
+    private var pendingTrackToPlay: MusicTrack? = null
 
     private var localExoPlayer: ExoPlayer? = null
 
@@ -65,6 +66,10 @@ class MusicPlayerManager(
             override fun onReady(youTubePlayer: YouTubePlayer) {
                 activeYouTubePlayer = youTubePlayer
                 isYtReady = true
+                pendingTrackToPlay?.let { track ->
+                    youTubePlayer.loadVideo(track.id, 0f)
+                    pendingTrackToPlay = null
+                }
             }
 
             override fun onStateChange(youTubePlayer: YouTubePlayer, state: PlayerConstants.PlayerState) {
@@ -114,9 +119,7 @@ class MusicPlayerManager(
             if (isYtReady && activeYouTubePlayer != null) {
                 activeYouTubePlayer?.loadVideo(track.id, 0f)
             } else {
-                youTubePlayerView.postDelayed({
-                    activeYouTubePlayer?.loadVideo(track.id, 0f)
-                }, 800)
+                pendingTrackToPlay = track
             }
         }
     }
