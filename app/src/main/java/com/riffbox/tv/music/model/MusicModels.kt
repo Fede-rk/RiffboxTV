@@ -63,7 +63,8 @@ data class ArtistProfile(
     val imageUrl: String = "",
     val topTracks: List<MusicTrack> = emptyList(),
     val albums: List<MusicAlbum> = emptyList(),
-    val singles: List<MusicAlbum> = emptyList()
+    val singles: List<MusicAlbum> = emptyList(),
+    val similarArtists: List<MusicArtistSummary> = emptyList()
 ) : Serializable
 
 data class SearchMusicResult(

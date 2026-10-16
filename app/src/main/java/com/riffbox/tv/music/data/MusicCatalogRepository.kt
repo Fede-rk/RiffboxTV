@@ -982,6 +982,7 @@ object MusicCatalogRepository {
             val topTracks = mutableListOf<MusicTrack>()
             val albums = mutableListOf<MusicAlbum>()
             val singles = mutableListOf<MusicAlbum>()
+            val similarArtists = mutableListOf<MusicArtistSummary>()
             var parsedName = artistName
             var parsedSubtitle = ""
             var parsedImage = fallbackImage
@@ -1025,7 +1026,7 @@ object MusicCatalogRepository {
                             }
                         }
 
-                        // Carousel Shelves: Albums and Singles
+                        // Carousel Shelves: Albums, Singles, and Similar Artists (Fans also like)
                         if (obj.has("musicCarouselShelfRenderer")) {
                             val car = obj.optJSONObject("musicCarouselShelfRenderer")
                             val headerTitle = car?.optJSONObject("header")
@@ -1034,6 +1035,9 @@ object MusicCatalogRepository {
                             val lowerHeader = headerTitle.lowercase()
                             val isAlbum = lowerHeader.contains("lbum")
                             val isSingle = lowerHeader.contains("single") || lowerHeader.contains("sencillo") || lowerHeader.contains("ep")
+                            val isSimilar = lowerHeader.contains("similar") || lowerHeader.contains("fans") ||
+                                    lowerHeader.contains("parecid") || lowerHeader.contains("relacionad") ||
+                                    lowerHeader.contains("gusta") || lowerHeader.contains("oyentes")
 
                             if (isAlbum || isSingle) {
                                 val contents = car?.optJSONArray("contents")
@@ -1066,6 +1070,26 @@ object MusicCatalogRepository {
                                                     artist = parsedName
                                                 )
                                                 if (isAlbum) albums.add(albumObj) else singles.add(albumObj)
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if (isSimilar) {
+                                val contents = car?.optJSONArray("contents")
+                                if (contents != null) {
+                                    for (i in 0 until contents.length()) {
+                                        val item = contents.optJSONObject(i)?.optJSONObject("musicTwoRowItemRenderer")
+                                        if (item != null) {
+                                            val sTitle = item.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text", "") ?: ""
+                                            val sBrowseId = item.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId", "") ?: ""
+                                            val thumbs = item.optJSONObject("thumbnailRenderer")?.optJSONObject("musicThumbnailRenderer")
+                                                ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+                                            val sThumb = if (thumbs != null && thumbs.length() > 0) {
+                                                thumbs.optJSONObject(thumbs.length() - 1)?.optString("url") ?: ""
+                                            } else ""
+
+                                            if (sTitle.isNotEmpty()) {
+                                                similarArtists.add(MusicArtistSummary(browseId = sBrowseId, name = sTitle, imageUrl = sThumb))
                                             }
                                         }
                                     }
@@ -1113,7 +1137,8 @@ object MusicCatalogRepository {
                 imageUrl = parsedImage,
                 topTracks = orderedTracks,
                 albums = albums.distinctBy { it.browseId },
-                singles = singles.distinctBy { it.browseId }
+                singles = singles.distinctBy { it.browseId },
+                similarArtists = similarArtists.distinctBy { it.name.lowercase() }
             )
         }
 
@@ -1144,6 +1169,104 @@ object MusicCatalogRepository {
             )
         }
         null
+    }
+
+    /**
+     * Builds an on-the-fly, completely dynamic and random mix of tracks
+     * featuring the target artist and similar artists (from both YouTube Music and catalog).
+     * Every execution is randomized and assembled in the moment.
+     */
+    suspend fun buildSimilarArtistsRadioQueue(profile: ArtistProfile): List<MusicTrack> = withContext(Dispatchers.IO) {
+        val resultList = mutableListOf<MusicTrack>()
+        val artistLower = profile.name.lowercase().trim()
+
+        // 1. Pick 5 to 8 random songs from the current artist
+        val myTracks = profile.topTracks.shuffled()
+        val mySelectedTracks = myTracks.take(8)
+
+        // 2. Collect candidate similar artists
+        val candidateSimilarArtists = mutableListOf<String>()
+
+        // From profile's parsed similar artists (Fans might also like)
+        for (sim in profile.similarArtists) {
+            val simNameLower = sim.name.lowercase()
+            if (!simNameLower.contains(artistLower) && !artistLower.contains(simNameLower)) {
+                candidateSimilarArtists.add(sim.name)
+            }
+        }
+
+        // Also check local catalog playlists to detect matching genres/artists
+        val allCatalogTracks = playlists.flatMap { it.tracks }.distinctBy { it.id }
+        val matchingPlaylists = playlists.filter { pl ->
+            pl.tracks.any { it.artist.contains(profile.name, ignoreCase = true) }
+        }
+
+        for (pl in matchingPlaylists) {
+            val otherArtists = pl.tracks.map { it.artist }.distinct()
+            for (oa in otherArtists) {
+                val oaLower = oa.lowercase()
+                if (!oaLower.contains(artistLower) && !artistLower.contains(oaLower)) {
+                    candidateSimilarArtists.add(oa)
+                }
+            }
+        }
+
+        // Shuffle candidate similar artists to guarantee different artists every time
+        val distinctSimilar = candidateSimilarArtists.distinctBy { it.lowercase() }.shuffled()
+        val chosenArtists = distinctSimilar.take(7)
+
+        val similarTracksPool = mutableListOf<MusicTrack>()
+
+        // For each chosen similar artist, collect 2 to 4 random tracks
+        for (simArtist in chosenArtists) {
+            // Check local catalog first (instant zero-latency tracks)
+            val localSimTracks = allCatalogTracks.filter {
+                it.artist.contains(simArtist, ignoreCase = true)
+            }.shuffled()
+
+            if (localSimTracks.isNotEmpty()) {
+                similarTracksPool.addAll(localSimTracks.take(3))
+            } else {
+                // Fetch from YouTube Music search
+                try {
+                    val searchResult = searchMusic(simArtist)
+                    val simTracks = searchResult.filter {
+                        !it.artist.lowercase().contains(artistLower)
+                    }.shuffled()
+                    similarTracksPool.addAll(simTracks.take(3))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
+        // If pool needs more variety, supplement with matching genre playlists
+        if (similarTracksPool.size < 25 && matchingPlaylists.isNotEmpty()) {
+            val extraGenreTracks = matchingPlaylists.flatMap { it.tracks }
+                .filter { !it.artist.lowercase().contains(artistLower) }
+                .shuffled()
+            similarTracksPool.addAll(extraGenreTracks.take(30))
+        } else if (similarTracksPool.size < 20) {
+            val fallbackCatalog = allCatalogTracks
+                .filter { !it.artist.lowercase().contains(artistLower) }
+                .shuffled()
+            similarTracksPool.addAll(fallbackCatalog.take(30))
+        }
+
+        // 3. Assemble dynamic list:
+        // Place 1 track from the main artist as the opener so playback starts with the selected artist
+        val openerTrack = mySelectedTracks.firstOrNull() ?: myTracks.firstOrNull()
+        if (openerTrack != null) {
+            resultList.add(openerTrack)
+        }
+
+        // The remaining tracks from the main artist + similar artists shuffled together
+        val remainingMyTracks = if (openerTrack != null) mySelectedTracks.filter { it.id != openerTrack.id } else mySelectedTracks
+        val pool = (remainingMyTracks + similarTracksPool).distinctBy { it.id }.shuffled()
+
+        resultList.addAll(pool)
+
+        return@withContext resultList.distinctBy { it.id }
     }
 
     /**

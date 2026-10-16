@@ -315,6 +315,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.ivOverlayHeaderThumb.setImageResource(R.drawable.ic_riffbox_logo)
         binding.tvOverlayHeaderName.text = "${category.icon} ${category.title}"
         binding.tvOverlayHeaderSubtitle.text = "Cargando lo mejor del género..."
+        binding.btnOverlaySimilar.visibility = View.GONE
 
         lifecycleScope.launch {
             val results = MusicCatalogRepository.searchMusic(category.query)
@@ -353,6 +354,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
 
         // Setup Playlist Header Banner
         binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.btnOverlaySimilar.visibility = View.GONE
         binding.ivOverlayHeaderThumb.load(playlist.coverUrl) {
             crossfade(true)
             placeholder(R.drawable.ic_riffbox_logo)
@@ -392,6 +394,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.artistSinglesSection.visibility = View.GONE
         binding.tvTracksSectionTitle.visibility = View.GONE
         binding.musicSearchLoading.visibility = View.VISIBLE
+        binding.btnOverlaySimilar.visibility = View.GONE
 
         binding.overlayProfileHeader.visibility = View.VISIBLE
         binding.ivOverlayHeaderThumb.load(imageUrl.ifEmpty { null }) {
@@ -455,6 +458,35 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             }
         }
 
+        // Button: Artistas Similares (Automatic, dynamic, on-the-fly random mix)
+        binding.btnOverlaySimilar.visibility = View.VISIBLE
+        binding.btnOverlaySimilar.setOnClickListener {
+            binding.musicSearchLoading.visibility = View.VISIBLE
+            binding.tvOverlayHeaderSubtitle.text = "🎲 Armando lista de ${profile.name} y artistas similares..."
+            Toast.makeText(this, "Creando lista aleatoria con artistas similares...", Toast.LENGTH_SHORT).show()
+
+            lifecycleScope.launch {
+                val radioQueue = MusicCatalogRepository.buildSimilarArtistsRadioQueue(profile)
+                binding.musicSearchLoading.visibility = View.GONE
+
+                if (radioQueue.isNotEmpty()) {
+                    tracksOverlayAdapterCurrentList = radioQueue
+                    tracksOverlayAdapter.updateList(radioQueue)
+
+                    binding.tvTracksOverlayTitle.text = "📻 ${profile.name} + Similares"
+                    binding.tvTracksSectionTitle.visibility = View.VISIBLE
+                    binding.tvTracksSectionTitle.text = "Mezcla Aleatoria (${radioQueue.size} canciones)"
+                    binding.tvOverlayHeaderSubtitle.text = "Mezcla dinámica generada en el momento"
+
+                    playMusicTrack(radioQueue.first(), radioQueue)
+                    Toast.makeText(this@MainActivity, "▶ Reproduciendo ${radioQueue.size} canciones de ${profile.name} y similares", Toast.LENGTH_SHORT).show()
+                } else {
+                    binding.tvOverlayHeaderSubtitle.text = profile.subtitle.ifEmpty { "Canciones" }
+                    Toast.makeText(this@MainActivity, "No se pudieron obtener artistas similares", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
         // Albums Section
         if (profile.albums.isNotEmpty()) {
             binding.artistAlbumsSection.visibility = View.VISIBLE
@@ -493,6 +525,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.musicSearchLoading.visibility = View.VISIBLE
 
         binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.btnOverlaySimilar.visibility = View.GONE
         binding.ivOverlayHeaderThumb.load(album.coverUrl) {
             crossfade(true)
             placeholder(R.drawable.ic_riffbox_logo)
@@ -699,6 +732,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.musicSearchLoading.visibility = View.GONE
 
         binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.btnOverlaySimilar.visibility = View.GONE
         binding.ivOverlayHeaderThumb.setImageResource(R.drawable.ic_riffbox_logo)
         binding.tvOverlayHeaderName.text = "Canciones Guardadas"
         binding.tvOverlayHeaderSubtitle.text = "${downloaded.size} canciones en tu dispositivo"

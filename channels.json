@@ -1,8 +1,8 @@
 {
-  "version": 15,
-  "latest_app_version_code": 15,
-  "latest_app_version_name": "1.4.7",
-  "release_notes": "Riffbox v1.4.7: Corrección crítica de instalación en Android TV y Google TV (compatibilidad total targetSdk 34 + firmas v1/v2/v3). Actualización e instalación directa desde la app con progreso en pantalla, letras de canciones integradas y reproductor limpio sin logos.",
+  "version": 16,
+  "latest_app_version_code": 16,
+  "latest_app_version_name": "1.4.8",
+  "release_notes": "Riffbox v1.4.8: Nuevo botón 'Artistas Similares' en el perfil de cada artista. Genera en vivo y de forma automática y 100% aleatoria una mezcla dinámica combinando canciones del artista y de artistas similares, nunca la misma lista.",
 
   "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [
