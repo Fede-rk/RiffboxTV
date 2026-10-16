@@ -1,8 +1,8 @@
 {
-  "version": 13,
-  "latest_app_version_code": 13,
-  "latest_app_version_name": "1.4.5",
-  "release_notes": "Riffbox v1.4.5: Bloqueo de toques accidentales hacia YouTube en el reproductor (ahora pausa/reanuda la reproducción sin abrir YouTube). Perfiles completos de artistas con carrusel de álbumes de estudio completos, singles y EPs, canciones más escuchadas y visor interactivo de temas por disco.",
+  "version": 14,
+  "latest_app_version_code": 14,
+  "latest_app_version_name": "1.4.6",
+  "release_notes": "Riffbox v1.4.6: Reproductor musical 100% limpio sin marcos de video ni logos externos. Presenta portadas oficiales en alta definición con letras de canciones (Lyrics) integradas debajo, y prioriza los últimos lanzamientos en los perfiles de artistas.",
 
   "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [

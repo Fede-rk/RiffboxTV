@@ -11,9 +11,9 @@ android {
     defaultConfig {
         applicationId = "com.riffbox.tv"
         minSdk = 21
-        targetSdk = 34
-        versionCode = 13
-        versionName = "1.4.5"
+        versionCode = 14
+        versionName = "1.4.6"
+
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

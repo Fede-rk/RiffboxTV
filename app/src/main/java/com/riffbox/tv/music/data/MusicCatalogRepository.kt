@@ -1090,12 +1090,28 @@ object MusicCatalogRepository {
 
             parseArtistSections(json)
 
+            // If artist has recent singles/releases, prepend them to popular tracks!
+            val recentTracks = mutableListOf<MusicTrack>()
+            val latestSingle = singles.firstOrNull()
+            if (latestSingle != null && latestSingle.browseId.isNotEmpty()) {
+                try {
+                    val singleTracks = getAlbumTracks(latestSingle)
+                    for (t in singleTracks.take(2)) {
+                        recentTracks.add(t.copy(album = "✨ NUEVO LANZAMIENTO", isNewRelease = true))
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            val orderedTracks = (recentTracks + topTracks).distinctBy { it.id }
+
             return@withContext ArtistProfile(
                 browseId = browseId,
                 name = parsedName.ifEmpty { "Artista" },
                 subtitle = parsedSubtitle,
                 imageUrl = parsedImage,
-                topTracks = topTracks.distinctBy { it.id },
+                topTracks = orderedTracks,
                 albums = albums.distinctBy { it.browseId },
                 singles = singles.distinctBy { it.browseId }
             )
@@ -1182,6 +1198,71 @@ object MusicCatalogRepository {
         parseAlbumTracks(json)
         tracks.distinctBy { it.id }
     }
+
+    /**
+     * Fetches plain lyrics for a track using lrclib API with automatic title cleaning.
+     */
+    suspend fun getTrackLyrics(artist: String, title: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val cleanTitle = title
+                .replace(Regex("""\([^)]*(remaster|live|official|video|audio|mix)[^)]*\)""", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("""\[[^]]*]"""), "")
+                .replace(Regex("""-\s*remaster.*""", RegexOption.IGNORE_CASE), "")
+                .trim()
+
+            val cleanArtist = artist
+                .replace(Regex("""-\s*Topic""", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("""VEVO""", RegexOption.IGNORE_CASE), "")
+                .trim()
+
+            val encodedArtist = java.net.URLEncoder.encode(cleanArtist, "UTF-8")
+            val encodedTitle = java.net.URLEncoder.encode(cleanTitle, "UTF-8")
+            val urlStr = "https://lrclib.net/api/get?artist_name=$encodedArtist&track_name=$encodedTitle"
+
+            val url = URL(urlStr)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.connectTimeout = 4000
+            conn.readTimeout = 4000
+            conn.setRequestProperty("User-Agent", "RiffboxTV/1.4.5")
+
+            if (conn.responseCode in 200..299) {
+                val reader = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8"))
+                val text = reader.readText()
+                reader.close()
+                val json = JSONObject(text)
+                val plainLyrics = json.optString("plainLyrics", "")
+                if (plainLyrics.isNotEmpty()) {
+                    return@withContext plainLyrics
+                }
+            }
+        } catch (e: Exception) {
+            // Fallback search on lrclib
+            try {
+                val cleanTitle = title.replace(Regex("""\([^)]*\)"""), "").trim()
+                val encodedQ = java.net.URLEncoder.encode("$artist $cleanTitle", "UTF-8")
+                val searchUrl = URL("https://lrclib.net/api/search?q=$encodedQ")
+                val conn = searchUrl.openConnection() as HttpURLConnection
+                conn.connectTimeout = 4000
+                conn.readTimeout = 4000
+                conn.setRequestProperty("User-Agent", "RiffboxTV/1.4.5")
+                if (conn.responseCode in 200..299) {
+                    val reader = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8"))
+                    val text = reader.readText()
+                    reader.close()
+                    val arr = JSONArray(text)
+                    if (arr.length() > 0) {
+                        val first = arr.optJSONObject(0)
+                        val plain = first?.optString("plainLyrics", "") ?: ""
+                        if (plain.isNotEmpty()) return@withContext plain
+                    }
+                }
+            } catch (ex: Exception) {
+                // Ignore
+            }
+        }
+        null
+    }
+
 
     private fun extractArtistSummaryFromJson(json: JSONObject): MusicArtistSummary? {
         var summary: MusicArtistSummary? = null

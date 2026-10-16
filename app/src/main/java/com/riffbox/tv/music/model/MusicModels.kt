@@ -10,8 +10,10 @@ data class MusicTrack(
     val duration: String = "",
     val thumbnailUrl: String = "",
     var isDownloaded: Boolean = false,
-    var localFilePath: String? = null
+    var localFilePath: String? = null,
+    val isNewRelease: Boolean = false
 ) : Serializable
+
 
 data class MusicCategory(
     val id: String,

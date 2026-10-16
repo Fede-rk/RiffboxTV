@@ -191,7 +191,15 @@ class MusicTrackVerticalAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val track = tracks[position]
         holder.binding.trackTitle.text = track.title
-        holder.binding.trackArtist.text = if (track.duration.isNotEmpty()) "${track.artist} • ${track.duration}" else track.artist
+        val subText = if (track.isNewRelease || track.album.contains("NUEVO")) {
+            "✨ NUEVO • ${track.artist}${if (track.duration.isNotEmpty()) " • ${track.duration}" else ""}"
+        } else if (track.duration.isNotEmpty()) {
+            "${track.artist} • ${track.duration}"
+        } else {
+            track.artist
+        }
+        holder.binding.trackArtist.text = subText
+
 
         holder.binding.trackThumb.load(track.thumbnailUrl) {
             crossfade(true)

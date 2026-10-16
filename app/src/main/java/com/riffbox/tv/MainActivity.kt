@@ -610,13 +610,14 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.modalTrackTitle.text = track.title
         binding.modalTrackArtist.text = if (track.album.isNotEmpty()) "${track.artist} • ${track.album}" else track.artist
 
+        // Album Artwork: Always 100% visible, clean and elegant (Zero YouTube video, zero YouTube logos)
         binding.modalArtworkImage.visibility = View.VISIBLE
         binding.modalArtworkImage.alpha = 1f
         binding.modalArtworkImage.load(track.thumbnailUrl) {
             crossfade(true)
             placeholder(R.drawable.ic_riffbox_logo)
             error(R.drawable.ic_riffbox_logo)
-            transformations(RoundedCornersTransformation(20f))
+            transformations(RoundedCornersTransformation(18f))
         }
 
         binding.miniTrackTitle.text = track.title
@@ -628,7 +629,23 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             transformations(RoundedCornersTransformation(10f))
         }
         binding.nowPlayingMiniBar.visibility = View.VISIBLE
+
+        // Load Lyrics (Spotify / Apple Music Style)
+        binding.cardModalLyrics.visibility = View.VISIBLE
+        binding.lyricsLoading.visibility = View.VISIBLE
+        binding.tvModalLyrics.text = "Buscando letra de la canción..."
+
+        lifecycleScope.launch {
+            val lyrics = MusicCatalogRepository.getTrackLyrics(track.artist, track.title)
+            binding.lyricsLoading.visibility = View.GONE
+            if (!lyrics.isNullOrEmpty()) {
+                binding.tvModalLyrics.text = lyrics
+            } else {
+                binding.tvModalLyrics.text = "Letra instrumental o no disponible para esta canción."
+            }
+        }
     }
+
 
     private fun confirmTrackDownload(track: MusicTrack) {
         if (isTvDevice) return
@@ -730,14 +747,10 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.btnMiniPlayPause.setImageResource(playPauseRes)
         binding.btnModalPlayPause.setImageResource(playPauseRes)
 
-        if (isPlaying) {
-            // Video has started playing: fade out the cover image so video is visible
-            binding.modalArtworkImage.animate().alpha(0f).setDuration(400).start()
-        } else {
-            // Paused: bring back the cover art
-            binding.modalArtworkImage.animate().alpha(1f).setDuration(200).start()
-        }
+        // Cover artwork remains 100% visible - zero video, zero YouTube logos/branding!
+        binding.modalArtworkImage.alpha = 1f
     }
+
 
     // ==========================================
     // NAVIGATION: MUSIC <-> LIVE TV
