@@ -249,6 +249,17 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.nowPlayingMiniBar.setOnClickListener {
             openMusicPlayerModal()
         }
+        binding.miniTrackArtist.setOnClickListener {
+            musicPlayerManager.currentTrack?.let { track ->
+                val cleanArtist = track.artist
+                    .replace(Regex("""-\s*Topic""", RegexOption.IGNORE_CASE), "")
+                    .replace(Regex("""\s*feat\..*""", RegexOption.IGNORE_CASE), "")
+                    .trim()
+                if (cleanArtist.isNotEmpty()) {
+                    openArtistProfile(cleanArtist)
+                }
+            }
+        }
         binding.btnMiniPlayPause.setOnClickListener {
             musicPlayerManager.togglePlayPause()
         }
@@ -256,6 +267,18 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         // Fullscreen Player Modal Controls
         binding.btnMinimizePlayer.setOnClickListener {
             closeMusicPlayerModal()
+        }
+        binding.modalTrackArtist.setOnClickListener {
+            musicPlayerManager.currentTrack?.let { track ->
+                val cleanArtist = track.artist
+                    .replace(Regex("""-\s*Topic""", RegexOption.IGNORE_CASE), "")
+                    .replace(Regex("""\s*feat\..*""", RegexOption.IGNORE_CASE), "")
+                    .trim()
+                if (cleanArtist.isNotEmpty()) {
+                    closeMusicPlayerModal()
+                    openArtistProfile(cleanArtist)
+                }
+            }
         }
         binding.btnModalPlayPause.setOnClickListener {
             musicPlayerManager.togglePlayPause()

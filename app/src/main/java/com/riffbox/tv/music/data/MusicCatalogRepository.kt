@@ -1114,6 +1114,10 @@ object MusicCatalogRepository {
 
             parseArtistSections(json)
 
+            // Extract official YouTube Music Radio Playlist ID (RDEM...) from JSON
+            val rdemMatch = Regex(""""playlistId":\s*"(RDEM[^"]+)"""").find(json.toString())
+            val parsedRadioPlaylistId = rdemMatch?.groupValues?.get(1) ?: ""
+
             // If artist has recent singles/releases, prepend them to popular tracks!
             val recentTracks = mutableListOf<MusicTrack>()
             val latestSingle = singles.firstOrNull()
@@ -1135,6 +1139,7 @@ object MusicCatalogRepository {
                 name = parsedName.ifEmpty { "Artista" },
                 subtitle = parsedSubtitle,
                 imageUrl = parsedImage,
+                radioPlaylistId = parsedRadioPlaylistId,
                 topTracks = orderedTracks,
                 albums = albums.distinctBy { it.browseId },
                 singles = singles.distinctBy { it.browseId },
@@ -1172,100 +1177,145 @@ object MusicCatalogRepository {
     }
 
     /**
+     * Retrieves tracks from YouTube Music Radio / WatchNext endpoint given a playlistId (e.g. RDEM... or RDAMVM...).
+     * Returns ~25-50 musically cohesive tracks of the artist and genre-matched peers.
+     */
+    suspend fun getRadioTracks(radioPlaylistId: String): List<MusicTrack> = withContext(Dispatchers.IO) {
+        val tracks = mutableListOf<MusicTrack>()
+        try {
+            val payload = JSONObject().apply {
+                put("context", JSONObject().apply {
+                    put("client", JSONObject().apply {
+                        put("clientName", "WEB_REMIX")
+                        put("clientVersion", "1.20240101.01.00")
+                        put("hl", "es")
+                        put("gl", "AR")
+                    })
+                })
+                put("playlistId", radioPlaylistId)
+            }
+
+            val json = executeInnertubePost("https://music.youtube.com/youtubei/v1/next", payload)
+            if (json != null) {
+                fun parseVideoRenderers(obj: Any) {
+                    when (obj) {
+                        is JSONObject -> {
+                            if (obj.has("playlistPanelVideoRenderer")) {
+                                val r = obj.optJSONObject("playlistPanelVideoRenderer")
+                                val videoId = r?.optString("videoId", "") ?: ""
+                                val title = r?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text", "") ?: ""
+                                val artist = r?.optJSONObject("shortBylineText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+                                    ?: r?.optJSONObject("longBylineText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text") ?: ""
+                                val duration = r?.optJSONObject("lengthText")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text", "") ?: ""
+                                val thumbs = r?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+                                val thumbUrl = if (thumbs != null && thumbs.length() > 0) {
+                                    thumbs.optJSONObject(thumbs.length() - 1)?.optString("url") ?: ""
+                                } else if (videoId.isNotEmpty()) {
+                                    "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+                                } else ""
+
+                                if (videoId.isNotEmpty() && title.isNotEmpty()) {
+                                    tracks.add(
+                                        MusicTrack(
+                                            id = videoId,
+                                            title = title,
+                                            artist = artist.ifEmpty { "Artista" },
+                                            album = "Radio Mix",
+                                            duration = duration,
+                                            thumbnailUrl = thumbUrl
+                                        )
+                                    )
+                                }
+                            }
+                            val keys = obj.keys()
+                            while (keys.hasNext()) {
+                                val child = obj.opt(keys.next())
+                                if (child != null) parseVideoRenderers(child)
+                            }
+                        }
+                        is JSONArray -> {
+                            for (i in 0 until obj.length()) {
+                                val it = obj.opt(i)
+                                if (it != null) parseVideoRenderers(it)
+                            }
+                        }
+                    }
+                }
+                parseVideoRenderers(json)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        tracks.distinctBy { it.id }
+    }
+
+    /**
      * Builds an on-the-fly, completely dynamic and random mix of tracks
-     * featuring the target artist and similar artists (from both YouTube Music and catalog).
-     * Every execution is randomized and assembled in the moment.
+     * featuring the target artist and similar artists in the exact same musical genre.
+     * Uses YouTube Music's native artist radio engine (RDEM... / RDAMVM...),
+     * shuffles the pool dynamically in the moment, and NEVER mixes unrelated genres.
      */
     suspend fun buildSimilarArtistsRadioQueue(profile: ArtistProfile): List<MusicTrack> = withContext(Dispatchers.IO) {
-        val resultList = mutableListOf<MusicTrack>()
+        val radioTracks = mutableListOf<MusicTrack>()
         val artistLower = profile.name.lowercase().trim()
 
-        // 1. Pick 5 to 8 random songs from the current artist
-        val myTracks = profile.topTracks.shuffled()
-        val mySelectedTracks = myTracks.take(8)
-
-        // 2. Collect candidate similar artists
-        val candidateSimilarArtists = mutableListOf<String>()
-
-        // From profile's parsed similar artists (Fans might also like)
-        for (sim in profile.similarArtists) {
-            val simNameLower = sim.name.lowercase()
-            if (!simNameLower.contains(artistLower) && !artistLower.contains(simNameLower)) {
-                candidateSimilarArtists.add(sim.name)
+        // 1. Try artist's official YouTube Music Radio ID (RDEM...)
+        if (profile.radioPlaylistId.isNotEmpty()) {
+            val fetched = getRadioTracks(profile.radioPlaylistId)
+            if (fetched.isNotEmpty()) {
+                radioTracks.addAll(fetched)
             }
         }
 
-        // Also check local catalog playlists to detect matching genres/artists
-        val allCatalogTracks = playlists.flatMap { it.tracks }.distinctBy { it.id }
-        val matchingPlaylists = playlists.filter { pl ->
-            pl.tracks.any { it.artist.contains(profile.name, ignoreCase = true) }
-        }
-
-        for (pl in matchingPlaylists) {
-            val otherArtists = pl.tracks.map { it.artist }.distinct()
-            for (oa in otherArtists) {
-                val oaLower = oa.lowercase()
-                if (!oaLower.contains(artistLower) && !artistLower.contains(oaLower)) {
-                    candidateSimilarArtists.add(oa)
+        // 2. Fallback: try track-based radio on first popular song (RDAMVM...)
+        if (radioTracks.isEmpty() && profile.topTracks.isNotEmpty()) {
+            val firstTrackId = profile.topTracks.first().id
+            if (firstTrackId.isNotEmpty()) {
+                val fetched = getRadioTracks("RDAMVM$firstTrackId")
+                if (fetched.isNotEmpty()) {
+                    radioTracks.addAll(fetched)
                 }
             }
         }
 
-        // Shuffle candidate similar artists to guarantee different artists every time
-        val distinctSimilar = candidateSimilarArtists.distinctBy { it.lowercase() }.shuffled()
-        val chosenArtists = distinctSimilar.take(7)
-
-        val similarTracksPool = mutableListOf<MusicTrack>()
-
-        // For each chosen similar artist, collect 2 to 4 random tracks
-        for (simArtist in chosenArtists) {
-            // Check local catalog first (instant zero-latency tracks)
-            val localSimTracks = allCatalogTracks.filter {
-                it.artist.contains(simArtist, ignoreCase = true)
-            }.shuffled()
-
-            if (localSimTracks.isNotEmpty()) {
-                similarTracksPool.addAll(localSimTracks.take(3))
-            } else {
-                // Fetch from YouTube Music search
+        // 3. Fallback: query similar artists from profile ("Fans also like" / "Puede que también te guste")
+        if (radioTracks.isEmpty() && profile.similarArtists.isNotEmpty()) {
+            val chosenSimilar = profile.similarArtists.shuffled().take(6)
+            for (sim in chosenSimilar) {
                 try {
-                    val searchResult = searchMusic(simArtist)
-                    val simTracks = searchResult.filter {
-                        !it.artist.lowercase().contains(artistLower)
-                    }.shuffled()
-                    similarTracksPool.addAll(simTracks.take(3))
+                    val searchResult = searchMusic(sim.name)
+                    radioTracks.addAll(searchResult.shuffled().take(3))
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
             }
         }
 
-        // If pool needs more variety, supplement with matching genre playlists
-        if (similarTracksPool.size < 25 && matchingPlaylists.isNotEmpty()) {
-            val extraGenreTracks = matchingPlaylists.flatMap { it.tracks }
-                .filter { !it.artist.lowercase().contains(artistLower) }
-                .shuffled()
-            similarTracksPool.addAll(extraGenreTracks.take(30))
-        } else if (similarTracksPool.size < 20) {
-            val fallbackCatalog = allCatalogTracks
-                .filter { !it.artist.lowercase().contains(artistLower) }
-                .shuffled()
-            similarTracksPool.addAll(fallbackCatalog.take(30))
+        // 4. Combine & Randomize:
+        // Separate tracks by the selected artist vs similar artists
+        val myArtistTracks = (profile.topTracks + radioTracks.filter {
+            it.artist.lowercase().contains(artistLower) || artistLower.contains(it.artist.lowercase())
+        }).distinctBy { it.id }.shuffled()
+
+        val otherSimilarTracks = radioTracks.filterNot {
+            it.artist.lowercase().contains(artistLower) || artistLower.contains(it.artist.lowercase())
+        }.distinctBy { it.id }.shuffled()
+
+        val resultList = mutableListOf<MusicTrack>()
+
+        // Opener: Pick 1 random track from the selected artist so playback begins with that artist
+        val opener = myArtistTracks.firstOrNull()
+        if (opener != null) {
+            resultList.add(opener)
         }
 
-        // 3. Assemble dynamic list:
-        // Place 1 track from the main artist as the opener so playback starts with the selected artist
-        val openerTrack = mySelectedTracks.firstOrNull() ?: myTracks.firstOrNull()
-        if (openerTrack != null) {
-            resultList.add(openerTrack)
-        }
+        // Shuffle the rest of the artist's tracks together with all similar artists' tracks
+        val remainingMyTracks = if (opener != null) myArtistTracks.filter { it.id != opener.id } else myArtistTracks
+        val mixedPool = (remainingMyTracks + otherSimilarTracks).distinctBy { it.id }.shuffled()
 
-        // The remaining tracks from the main artist + similar artists shuffled together
-        val remainingMyTracks = if (openerTrack != null) mySelectedTracks.filter { it.id != openerTrack.id } else mySelectedTracks
-        val pool = (remainingMyTracks + similarTracksPool).distinctBy { it.id }.shuffled()
+        resultList.addAll(mixedPool)
 
-        resultList.addAll(pool)
-
+        // ABSOLUTE SAFETY: Never fall back to unrelated genres/playlists!
         return@withContext resultList.distinctBy { it.id }
     }
 

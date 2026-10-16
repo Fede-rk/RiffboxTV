@@ -828,20 +828,28 @@
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
-                <!-- Track Artist & Album -->
+                <!-- Track Artist & Album (Clickable to open artist profile) -->
                 <TextView
                     android:id="@+id/modalTrackArtist"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="28dp"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="6dp"
                     android:layout_marginEnd="28dp"
                     android:gravity="center"
                     android:maxLines="1"
                     android:ellipsize="end"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="@drawable/selector_card_focus"
+                    android:paddingStart="12dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="4dp"
                     android:text="Soda Stereo • Canción Animal"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
+                    android:textColor="@color/accent_orange"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
 
                 <!-- Delicate Minimalist Playback Controls -->
                 <LinearLayout

@@ -61,6 +61,7 @@ data class ArtistProfile(
     val name: String,
     val subtitle: String = "",
     val imageUrl: String = "",
+    val radioPlaylistId: String = "",
     val topTracks: List<MusicTrack> = emptyList(),
     val albums: List<MusicAlbum> = emptyList(),
     val singles: List<MusicAlbum> = emptyList(),
