@@ -654,16 +654,16 @@ object MusicCatalogRepository {
                 track("2JR-Bg_JQ68", "Caníbal", "O'Connor", "Dolor", "3:50"),
                 track("gclIuHiEVdI", "Como Relámpago en la Oscuridad", "Logos", "La Industria del Poder", "4:20"),
                 track("PjE5otOCJl4", "No Te Rindas", "Logos", "Generación Mutable", "3:45"),
-                track("e-Vi5uugYtY", "Ala Delta", "Divididos", "Acariciando lo Áspero", "4:12"),
-                track("obswq_in8Z4", "El 38", "Divididos", "Acariciando lo Áspero", "2:31"),
-                track("VC5NaNsR7-8", "La Balada del Diablo y la Muerte", "La Renga", "Despedazado por Mil Partes", "5:36"),
-                track("_FTW5MdKw98", "El Revelde", "La Renga", "La Renga", "3:32"),
-                track("3wsTxNusM4g", "Panic Show", "La Renga", "La Esquina del Infinito", "3:01"),
-                track("CnJqYsSOgfg", "Ji Ji Ji", "Patricio Rey y sus Redonditos de Ricota", "Oktubre", "5:32"),
-                track("U6lI8FkG8UI", "Juguetes Perdidos", "Patricio Rey y sus Redonditos de Ricota", "Luzbelito", "7:10"),
-                track("sWft4cMiwXQ", "De Música Ligera", "Soda Stereo", "Canción Animal", "3:32"),
-                track("DeMCz0O7-FM", "Demoliendo Hoteles", "Charly García", "Piano Bar", "2:18"),
-                track("nWvA8ThFH8M", "La Rubia Tarada", "Sumo", "Divididos por la Felicidad", "3:40")
+                track("r_1YI7ag8DA", "En Mil Pedazos", "Plan 4", "En Mil Pedazos", "3:30"),
+                track("WCmhRoVStmQ", "Destino", "Plan 4", "Dos Caras", "3:40"),
+                track("g_Vey2A3WbM", "Hijo de Puta", "Asspera", "Bija!", "3:15"),
+                track("G971nz3LV9o", "El Comienzo", "Arde la Sangre", "La Cura", "3:50"),
+                track("KIubV7fs4fo", "Susy Cadillac", "Riff", "Contenidos", "3:40"),
+                track("WYlsa1QfHSk", "No Detenga Su Motor", "Riff", "Ruedas de Metal", "3:35"),
+                track("bYAbdf8kBi4", "Maza", "Lethal", "Maza", "3:25"),
+                track("_9VxFWApmec", "Solución Suicida", "Horcas", "Oíd Mortales el Grito Sangrado", "4:10"),
+                track("b333y5rIzJc", "Loco Pro", "A.N.I.M.A.L.", "Acosados Nuestros Indios Murieron Al Luchar", "3:12"),
+                track("Dq7rIXQd8js", "Olvidalo y Volverá por Más", "Hermética", "Víctimas del Vaciamiento", "3:58")
             )
         ),
 
@@ -1715,15 +1715,41 @@ object MusicCatalogRepository {
             // Genre station: pull from local playlists matching the genre
             val genreTracks = playlists.filter { it.id in station.localPlaylistIds }
                 .flatMap { it.tracks }
+                .filter { isTrackValidForStation(it, station) }
                 .shuffled()
             if (genreTracks.isNotEmpty()) {
                 initialTracks.addAll(genreTracks.take(15))
             } else {
-                initialTracks.addAll(playlists.flatMap { it.tracks }.shuffled().take(15))
+                initialTracks.addAll(playlists.filter { it.id in station.localPlaylistIds }.flatMap { it.tracks }.shuffled().take(15))
             }
         }
 
-        return@withContext initialTracks.distinctBy { it.id }.shuffled()
+        return@withContext initialTracks.filter { isTrackValidForStation(it, station) }.distinctBy { it.id }.shuffled()
+    }
+
+    private fun isTrackValidForStation(track: MusicTrack, station: InfiniteGenreStation): Boolean {
+        if (station.isLucky) return true
+        val text = "${track.artist} ${track.title}".lowercase()
+        return when (station.id) {
+            "station_metal" -> {
+                !text.contains("redondos") && !text.contains("patricio rey") &&
+                !text.contains("soda stereo") && !text.contains("charly garcia") &&
+                !text.contains("fito paez") && !text.contains("palmeras") &&
+                !text.contains("mona jimenez") && !text.contains("damas gratis") &&
+                !text.contains("ke personajes") && !text.contains("rodrigo") &&
+                !text.contains("los piojos") && !text.contains("divididos") &&
+                !text.contains("la renga") && !text.contains("sumo") && !text.contains("calamaro")
+            }
+            "station_punk" -> {
+                !text.contains("palmeras") && !text.contains("mona jimenez") &&
+                !text.contains("damas gratis") && !text.contains("ke personajes")
+            }
+            "station_cumbia" -> {
+                !text.contains("metallica") && !text.contains("slayer") &&
+                !text.contains("iron maiden") && !text.contains("cannibal corpse")
+            }
+            else -> true
+        }
     }
 
     /**
@@ -1757,7 +1783,8 @@ object MusicCatalogRepository {
                         async {
                             try {
                                 searchMusic(artist).filter { track ->
-                                    track.artist.contains(artist, ignoreCase = true) || artist.contains(track.artist, ignoreCase = true)
+                                    (track.artist.contains(artist, ignoreCase = true) || artist.contains(track.artist, ignoreCase = true)) &&
+                                    isTrackValidForStation(track, station)
                                 }.shuffled().take(4)
                             } catch (e: Exception) {
                                 emptyList()
@@ -1771,6 +1798,7 @@ object MusicCatalogRepository {
                 if (moreTracks.size < 4) {
                     val localGenre = playlists.filter { it.id in station.localPlaylistIds }
                         .flatMap { it.tracks }
+                        .filter { isTrackValidForStation(it, station) }
                         .shuffled()
                     moreTracks.addAll(localGenre.take(10))
                 }
@@ -1781,12 +1809,15 @@ object MusicCatalogRepository {
             val localTracks = if (station.isLucky) {
                 playlists.flatMap { it.tracks }.shuffled().take(10)
             } else {
-                playlists.filter { it.id in station.localPlaylistIds }.flatMap { it.tracks }.shuffled().take(10)
+                playlists.filter { it.id in station.localPlaylistIds }
+                    .flatMap { it.tracks }
+                    .filter { isTrackValidForStation(it, station) }
+                    .shuffled().take(10)
             }
             moreTracks.addAll(localTracks)
         }
 
-        return@withContext moreTracks.distinctBy { it.id }
+        return@withContext moreTracks.filter { isTrackValidForStation(it, station) }.distinctBy { it.id }
     }
 
     /**
