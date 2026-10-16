@@ -9,15 +9,18 @@ import coil.load
 import coil.transform.CircleCropTransformation
 import coil.transform.RoundedCornersTransformation
 import com.riffbox.tv.R
+import com.riffbox.tv.databinding.ItemMusicAlbumBinding
 import com.riffbox.tv.databinding.ItemMusicArtistBinding
 import com.riffbox.tv.databinding.ItemMusicCategoryBinding
 import com.riffbox.tv.databinding.ItemMusicPlaylistBinding
 import com.riffbox.tv.databinding.ItemMusicTrackHorizontalBinding
 import com.riffbox.tv.databinding.ItemMusicTrackVerticalBinding
+import com.riffbox.tv.music.model.MusicAlbum
 import com.riffbox.tv.music.model.MusicArtist
 import com.riffbox.tv.music.model.MusicCategory
 import com.riffbox.tv.music.model.MusicPlaylist
 import com.riffbox.tv.music.model.MusicTrack
+
 
 class MusicCategoryAdapter(
     private var categories: List<MusicCategory>,
@@ -227,3 +230,41 @@ class MusicTrackVerticalAdapter(
         notifyDataSetChanged()
     }
 }
+
+class MusicAlbumAdapter(
+    private var albums: List<MusicAlbum>,
+    private val onAlbumClick: (MusicAlbum) -> Unit
+) : RecyclerView.Adapter<MusicAlbumAdapter.ViewHolder>() {
+
+    class ViewHolder(val binding: ItemMusicAlbumBinding) : RecyclerView.ViewHolder(binding.root)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val binding = ItemMusicAlbumBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return ViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val album = albums[position]
+        holder.binding.albumTitle.text = album.title
+        holder.binding.albumSubtitle.text = if (album.year.isNotEmpty()) album.year else "Álbum"
+
+        holder.binding.albumImage.load(album.coverUrl) {
+            crossfade(true)
+            placeholder(R.drawable.ic_riffbox_logo)
+            error(R.drawable.ic_riffbox_logo)
+            transformations(RoundedCornersTransformation(10f))
+        }
+
+        holder.binding.root.setOnClickListener {
+            onAlbumClick(album)
+        }
+    }
+
+    override fun getItemCount() = albums.size
+
+    fun updateList(newList: List<MusicAlbum>) {
+        albums = newList
+        notifyDataSetChanged()
+    }
+}
+

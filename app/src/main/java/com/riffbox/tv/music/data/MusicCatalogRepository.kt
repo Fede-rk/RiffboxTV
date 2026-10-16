@@ -1,9 +1,14 @@
 package com.riffbox.tv.music.data
 
+import com.riffbox.tv.music.model.ArtistProfile
+import com.riffbox.tv.music.model.MusicAlbum
 import com.riffbox.tv.music.model.MusicArtist
+import com.riffbox.tv.music.model.MusicArtistSummary
 import com.riffbox.tv.music.model.MusicCategory
 import com.riffbox.tv.music.model.MusicPlaylist
 import com.riffbox.tv.music.model.MusicTrack
+import com.riffbox.tv.music.model.SearchMusicResult
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -852,21 +857,76 @@ object MusicCatalogRepository {
     }
 
     /**
-     * Real-time search query powered by YouTube Innertube API
+     * Executes an Innertube HTTP POST request with proper headers and JSON payload.
      */
-    suspend fun searchMusic(query: String): List<MusicTrack> = withContext(Dispatchers.IO) {
-        if (query.trim().isEmpty()) return@withContext emptyList()
+    private fun executeInnertubePost(urlStr: String, payload: JSONObject): JSONObject? {
+        var conn: HttpURLConnection? = null
+        return try {
+            val url = URL(urlStr)
+            conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            conn.doOutput = true
+
+            val writer = OutputStreamWriter(conn.outputStream, "UTF-8")
+            writer.write(payload.toString())
+            writer.flush()
+            writer.close()
+
+            if (conn.responseCode in 200..299) {
+                val reader = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8"))
+                val responseText = reader.readText()
+                reader.close()
+                JSONObject(responseText)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        } finally {
+            conn?.disconnect()
+        }
+    }
+
+    /**
+     * Search YouTube Music returning both an optional artist profile summary and song tracks.
+     */
+    suspend fun searchMusicWithArtist(query: String): SearchMusicResult = withContext(Dispatchers.IO) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return@withContext SearchMusicResult()
 
         try {
-            val url = URL("https://www.youtube.com/youtubei/v1/search")
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "POST"
-            connection.connectTimeout = 7000
-            connection.readTimeout = 7000
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
             val payload = JSONObject().apply {
+                put("context", JSONObject().apply {
+                    put("client", JSONObject().apply {
+                        put("clientName", "WEB_REMIX")
+                        put("clientVersion", "1.20240101.01.00")
+                        put("hl", "es")
+                        put("gl", "AR")
+                    })
+                })
+                put("query", trimmed)
+            }
+
+            val responseJson = executeInnertubePost("https://music.youtube.com/youtubei/v1/search", payload)
+            if (responseJson != null) {
+                val artistSummary = extractArtistSummaryFromJson(responseJson)
+                val ytmTracks = extractYtmTracksFromJson(responseJson)
+                if (ytmTracks.isNotEmpty()) {
+                    return@withContext SearchMusicResult(artist = artistSummary, tracks = ytmTracks)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Fallback to standard YouTube Web search
+        try {
+            val webPayload = JSONObject().apply {
                 put("context", JSONObject().apply {
                     put("client", JSONObject().apply {
                         put("clientName", "WEB")
@@ -875,34 +935,379 @@ object MusicCatalogRepository {
                         put("gl", "US")
                     })
                 })
-                put("query", query)
+                put("query", trimmed)
             }
-
-            connection.doOutput = true
-            val writer = OutputStreamWriter(connection.outputStream)
-            writer.write(payload.toString())
-            writer.flush()
-            writer.close()
-
-            val reader = BufferedReader(InputStreamReader(connection.inputStream))
-            val responseText = reader.readText()
-            reader.close()
-            connection.disconnect()
-
-            val responseJson = JSONObject(responseText)
-            val parsedTracks = extractTracksFromJson(responseJson)
-            if (parsedTracks.isNotEmpty()) {
-                return@withContext parsedTracks
+            val webJson = executeInnertubePost("https://www.youtube.com/youtubei/v1/search", webPayload)
+            if (webJson != null) {
+                val webTracks = extractTracksFromJson(webJson)
+                if (webTracks.isNotEmpty()) {
+                    return@withContext SearchMusicResult(tracks = webTracks)
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
         // Fallback: match from local curated catalog if offline
-        val lower = query.lowercase()
+        val lower = trimmed.lowercase()
         val allLocalTracks = playlists.flatMap { it.tracks }.distinctBy { it.id }
-        allLocalTracks.filter {
+        val matchingLocal = allLocalTracks.filter {
             it.title.lowercase().contains(lower) || it.artist.lowercase().contains(lower)
+        }
+        SearchMusicResult(tracks = matchingLocal)
+    }
+
+    suspend fun searchMusic(query: String): List<MusicTrack> {
+        return searchMusicWithArtist(query).tracks
+    }
+
+    /**
+     * Loads a complete artist profile by browseId, including top songs, albums, and singles.
+     */
+    suspend fun getArtistProfile(browseId: String, artistName: String = "", fallbackImage: String = ""): ArtistProfile = withContext(Dispatchers.IO) {
+        val payload = JSONObject().apply {
+            put("context", JSONObject().apply {
+                put("client", JSONObject().apply {
+                    put("clientName", "WEB_REMIX")
+                    put("clientVersion", "1.20240101.01.00")
+                    put("hl", "es")
+                    put("gl", "AR")
+                })
+            })
+            put("browseId", browseId)
+        }
+
+        val json = executeInnertubePost("https://music.youtube.com/youtubei/v1/browse", payload)
+        if (json != null) {
+            val topTracks = mutableListOf<MusicTrack>()
+            val albums = mutableListOf<MusicAlbum>()
+            val singles = mutableListOf<MusicAlbum>()
+            var parsedName = artistName
+            var parsedSubtitle = ""
+            var parsedImage = fallbackImage
+
+            fun parseArtistSections(obj: Any) {
+                when (obj) {
+                    is JSONObject -> {
+                        // Extract Header if present
+                        if (obj.has("musicImmersiveHeaderRenderer")) {
+                            val header = obj.optJSONObject("musicImmersiveHeaderRenderer")
+                            if (header != null) {
+                                val t = header.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+                                if (!t.isNullOrEmpty()) parsedName = t
+                                val sub = header.optJSONObject("description")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text")
+                                    ?: header.optJSONObject("monthlyListeners")?.optString("text") ?: ""
+                                if (sub.isNotEmpty()) parsedSubtitle = sub
+                                val thumbs = header.optJSONObject("thumbnail")?.optJSONObject("musicThumbnailRenderer")
+                                    ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+                                if (thumbs != null && thumbs.length() > 0) {
+                                    parsedImage = thumbs.optJSONObject(thumbs.length() - 1)?.optString("url") ?: parsedImage
+                                }
+                            }
+                        }
+
+                        // Top Songs Shelf
+                        if (obj.has("musicShelfRenderer")) {
+                            val shelf = obj.optJSONObject("musicShelfRenderer")
+                            val shelfTitle = shelf?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text", "") ?: ""
+                            val lowerTitle = shelfTitle.lowercase()
+                            if (lowerTitle.contains("canci") || lowerTitle.contains("song") || lowerTitle.contains("popular") || lowerTitle.contains("mencionad") || lowerTitle.contains("éxito")) {
+                                val contents = shelf?.optJSONArray("contents")
+                                if (contents != null) {
+                                    for (i in 0 until contents.length()) {
+                                        val item = contents.optJSONObject(i)?.optJSONObject("musicResponsiveListItemRenderer")
+                                        if (item != null) {
+                                            val track = parseYtmItemToTrack(item, parsedName)
+                                            if (track != null) topTracks.add(track)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Carousel Shelves: Albums and Singles
+                        if (obj.has("musicCarouselShelfRenderer")) {
+                            val car = obj.optJSONObject("musicCarouselShelfRenderer")
+                            val headerTitle = car?.optJSONObject("header")
+                                ?.optJSONObject("musicCarouselShelfBasicHeaderRenderer")
+                                ?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text", "") ?: ""
+                            val lowerHeader = headerTitle.lowercase()
+                            val isAlbum = lowerHeader.contains("lbum")
+                            val isSingle = lowerHeader.contains("single") || lowerHeader.contains("sencillo") || lowerHeader.contains("ep")
+
+                            if (isAlbum || isSingle) {
+                                val contents = car?.optJSONArray("contents")
+                                if (contents != null) {
+                                    for (i in 0 until contents.length()) {
+                                        val item = contents.optJSONObject(i)?.optJSONObject("musicTwoRowItemRenderer")
+                                        if (item != null) {
+                                            val aTitle = item.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text", "") ?: ""
+                                            val aBrowseId = item.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId", "") ?: ""
+                                            val subtitleRuns = item.optJSONObject("subtitle")?.optJSONArray("runs")
+                                            val sb = StringBuilder()
+                                            if (subtitleRuns != null) {
+                                                for (r in 0 until subtitleRuns.length()) {
+                                                    sb.append(subtitleRuns.optJSONObject(r)?.optString("text", ""))
+                                                }
+                                            }
+                                            val aYear = sb.toString()
+                                            val thumbs = item.optJSONObject("thumbnailRenderer")?.optJSONObject("musicThumbnailRenderer")
+                                                ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+                                            val aThumb = if (thumbs != null && thumbs.length() > 0) {
+                                                thumbs.optJSONObject(thumbs.length() - 1)?.optString("url") ?: ""
+                                            } else ""
+
+                                            if (aTitle.isNotEmpty() && aBrowseId.isNotEmpty()) {
+                                                val albumObj = MusicAlbum(
+                                                    browseId = aBrowseId,
+                                                    title = aTitle,
+                                                    year = aYear,
+                                                    coverUrl = aThumb,
+                                                    artist = parsedName
+                                                )
+                                                if (isAlbum) albums.add(albumObj) else singles.add(albumObj)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        val keys = obj.keys()
+                        while (keys.hasNext()) {
+                            val child = obj.opt(keys.next())
+                            if (child != null) parseArtistSections(child)
+                        }
+                    }
+                    is JSONArray -> {
+                        for (i in 0 until obj.length()) {
+                            val it = obj.opt(i)
+                            if (it != null) parseArtistSections(it)
+                        }
+                    }
+                }
+            }
+
+            parseArtistSections(json)
+
+            return@withContext ArtistProfile(
+                browseId = browseId,
+                name = parsedName.ifEmpty { "Artista" },
+                subtitle = parsedSubtitle,
+                imageUrl = parsedImage,
+                topTracks = topTracks.distinctBy { it.id },
+                albums = albums.distinctBy { it.browseId },
+                singles = singles.distinctBy { it.browseId }
+            )
+        }
+
+        // Fallback
+        ArtistProfile(
+            browseId = browseId,
+            name = artistName.ifEmpty { "Artista" },
+            imageUrl = fallbackImage
+        )
+    }
+
+    /**
+     * Resolves an artist by name via search, then fetches full profile and discography.
+     */
+    suspend fun getArtistProfileByName(artistName: String): ArtistProfile? = withContext(Dispatchers.IO) {
+        val searchRes = searchMusicWithArtist(artistName)
+        val summary = searchRes.artist
+        if (summary != null && summary.browseId.isNotEmpty()) {
+            return@withContext getArtistProfile(summary.browseId, summary.name, summary.imageUrl)
+        }
+        if (searchRes.tracks.isNotEmpty()) {
+            return@withContext ArtistProfile(
+                browseId = "",
+                name = artistName,
+                subtitle = "Canciones encontradas",
+                imageUrl = searchRes.tracks.first().thumbnailUrl,
+                topTracks = searchRes.tracks
+            )
+        }
+        null
+    }
+
+    /**
+     * Loads the complete tracklist for an album or single by its browseId.
+     */
+    suspend fun getAlbumTracks(album: MusicAlbum): List<MusicTrack> = withContext(Dispatchers.IO) {
+        val payload = JSONObject().apply {
+            put("context", JSONObject().apply {
+                put("client", JSONObject().apply {
+                    put("clientName", "WEB_REMIX")
+                    put("clientVersion", "1.20240101.01.00")
+                    put("hl", "es")
+                    put("gl", "AR")
+                })
+            })
+            put("browseId", album.browseId)
+        }
+
+        val json = executeInnertubePost("https://music.youtube.com/youtubei/v1/browse", payload) ?: return@withContext emptyList()
+        val tracks = mutableListOf<MusicTrack>()
+
+        fun parseAlbumTracks(obj: Any) {
+            when (obj) {
+                is JSONObject -> {
+                    if (obj.has("musicResponsiveListItemRenderer")) {
+                        val item = obj.optJSONObject("musicResponsiveListItemRenderer")
+                        if (item != null) {
+                            val track = parseYtmItemToTrack(item, album.artist)
+                            if (track != null) {
+                                tracks.add(track.copy(
+                                    album = album.title,
+                                    thumbnailUrl = if (track.thumbnailUrl.isEmpty() || track.thumbnailUrl.contains("hqdefault")) album.coverUrl else track.thumbnailUrl
+                                ))
+                            }
+                        }
+                    }
+                    val keys = obj.keys()
+                    while (keys.hasNext()) {
+                        val child = obj.opt(keys.next())
+                        if (child != null) parseAlbumTracks(child)
+                    }
+                }
+                is JSONArray -> {
+                    for (i in 0 until obj.length()) {
+                        val it = obj.opt(i)
+                        if (it != null) parseAlbumTracks(it)
+                    }
+                }
+            }
+        }
+
+        parseAlbumTracks(json)
+        tracks.distinctBy { it.id }
+    }
+
+    private fun extractArtistSummaryFromJson(json: JSONObject): MusicArtistSummary? {
+        var summary: MusicArtistSummary? = null
+        fun find(obj: Any) {
+            if (summary != null) return
+            when (obj) {
+                is JSONObject -> {
+                    if (obj.has("musicCardShelfRenderer")) {
+                        val card = obj.optJSONObject("musicCardShelfRenderer")
+                        if (card != null) {
+                            val title = card.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text", "") ?: ""
+                            val subRuns = card.optJSONObject("subtitle")?.optJSONArray("runs")
+                            val sb = StringBuilder()
+                            if (subRuns != null) {
+                                for (i in 0 until subRuns.length()) sb.append(subRuns.optJSONObject(i)?.optString("text", ""))
+                            }
+                            val sub = sb.toString()
+                            val browseId = card.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)
+                                ?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId", "") ?: ""
+                            val thumbs = card.optJSONObject("thumbnail")?.optJSONObject("musicThumbnailRenderer")
+                                ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+                            val thumb = if (thumbs != null && thumbs.length() > 0) thumbs.optJSONObject(thumbs.length() - 1)?.optString("url", "") ?: "" else ""
+
+                            if (browseId.isNotEmpty() && title.isNotEmpty()) {
+                                summary = MusicArtistSummary(browseId, title, sub, thumb)
+                                return
+                            }
+                        }
+                    }
+                    val keys = obj.keys()
+                    while (keys.hasNext()) {
+                        val child = obj.opt(keys.next())
+                        if (child != null) find(child)
+                    }
+                }
+                is JSONArray -> {
+                    for (i in 0 until obj.length()) {
+                        val it = obj.opt(i)
+                        if (it != null) find(it)
+                    }
+                }
+            }
+        }
+        find(json)
+        return summary
+    }
+
+    private fun extractYtmTracksFromJson(json: JSONObject): List<MusicTrack> {
+        val tracks = mutableListOf<MusicTrack>()
+        fun find(obj: Any) {
+            when (obj) {
+                is JSONObject -> {
+                    if (obj.has("musicResponsiveListItemRenderer")) {
+                        val item = obj.optJSONObject("musicResponsiveListItemRenderer")
+                        if (item != null) {
+                            val track = parseYtmItemToTrack(item)
+                            if (track != null) tracks.add(track)
+                        }
+                    }
+                    val keys = obj.keys()
+                    while (keys.hasNext()) {
+                        val child = obj.opt(keys.next())
+                        if (child != null) find(child)
+                    }
+                }
+                is JSONArray -> {
+                    for (i in 0 until obj.length()) {
+                        val it = obj.opt(i)
+                        if (it != null) find(it)
+                    }
+                }
+            }
+        }
+        find(json)
+        return tracks.distinctBy { it.id }
+    }
+
+    private fun parseYtmItemToTrack(item: JSONObject, fallbackArtist: String = "Artista"): MusicTrack? {
+        try {
+            var vid = item.optJSONObject("overlay")
+                ?.optJSONObject("musicItemThumbnailOverlayRenderer")
+                ?.optJSONObject("content")
+                ?.optJSONObject("musicPlayButtonRenderer")
+                ?.optJSONObject("playNavigationEndpoint")
+                ?.optJSONObject("watchEndpoint")?.optString("videoId", "") ?: ""
+
+            val flexCols = item.optJSONArray("flexColumns")
+            var title = ""
+            var artist = fallbackArtist
+
+            if (flexCols != null) {
+                val col0 = flexCols.optJSONObject(0)?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+                val tRun = col0?.optJSONObject("text")?.optJSONArray("runs")?.optJSONObject(0)
+                title = tRun?.optString("text", "") ?: ""
+                if (vid.isEmpty()) {
+                    vid = tRun?.optJSONObject("navigationEndpoint")?.optJSONObject("watchEndpoint")?.optString("videoId", "") ?: ""
+                }
+
+                if (flexCols.length() > 1) {
+                    val col1 = flexCols.optJSONObject(1)?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+                    val aRun = col1?.optJSONObject("text")?.optJSONArray("runs")?.optJSONObject(0)
+                    val aText = aRun?.optString("text", "") ?: ""
+                    if (aText.isNotEmpty()) artist = aText
+                }
+            }
+
+            if (vid.isEmpty() || title.isEmpty()) return null
+
+            var duration = ""
+            val fixedCols = item.optJSONArray("fixedColumns")
+            if (fixedCols != null && fixedCols.length() > 0) {
+                duration = fixedCols.optJSONObject(0)?.optJSONObject("musicResponsiveListItemFixedColumnRenderer")
+                    ?.optJSONObject("text")?.optJSONArray("runs")?.optJSONObject(0)?.optString("text", "") ?: ""
+            }
+
+            val thumbs = item.optJSONObject("thumbnail")?.optJSONObject("musicThumbnailRenderer")
+                ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+            val thumb = if (thumbs != null && thumbs.length() > 0) {
+                thumbs.optJSONObject(thumbs.length() - 1)?.optString("url", "") ?: "https://i.ytimg.com/vi/$vid/hqdefault.jpg"
+            } else {
+                "https://i.ytimg.com/vi/$vid/hqdefault.jpg"
+            }
+
+            return MusicTrack(id = vid, title = title, artist = artist, duration = duration, thumbnailUrl = thumb)
+        } catch (e: Exception) {
+            return null
         }
     }
 
@@ -948,3 +1353,4 @@ object MusicCatalogRepository {
         return tracks
     }
 }
+

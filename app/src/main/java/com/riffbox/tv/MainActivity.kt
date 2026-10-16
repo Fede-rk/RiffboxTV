@@ -32,11 +32,14 @@ import com.riffbox.tv.databinding.ActivityMainBinding
 import com.riffbox.tv.model.Channel
 import com.riffbox.tv.music.data.DownloadedTracksManager
 import com.riffbox.tv.music.data.MusicCatalogRepository
+import com.riffbox.tv.music.model.ArtistProfile
+import com.riffbox.tv.music.model.MusicAlbum
 import com.riffbox.tv.music.model.MusicArtist
 import com.riffbox.tv.music.model.MusicCategory
 import com.riffbox.tv.music.model.MusicPlaylist
 import com.riffbox.tv.music.model.MusicTrack
 import com.riffbox.tv.music.player.MusicPlayerManager
+import com.riffbox.tv.music.ui.MusicAlbumAdapter
 import com.riffbox.tv.music.ui.MusicArtistAdapter
 import com.riffbox.tv.music.ui.MusicCategoryAdapter
 import com.riffbox.tv.music.ui.MusicPlaylistAdapter
@@ -69,7 +72,12 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     private lateinit var musicArtistAdapter: MusicArtistAdapter
     private lateinit var musicDownloadsAdapter: MusicTrackHorizontalAdapter
     private lateinit var tracksOverlayAdapter: MusicTrackVerticalAdapter
+    private lateinit var artistAlbumsAdapter: MusicAlbumAdapter
+    private lateinit var artistSinglesAdapter: MusicAlbumAdapter
+    private var currentArtistProfile: ArtistProfile? = null
+    private var isViewingAlbum = false
     private var isPlayerModalOpen = false
+
 
     private var isTvDevice = false
     private val handler = Handler(Looper.getMainLooper())
@@ -186,10 +194,26 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.tracksRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.tracksRecyclerView.adapter = tracksOverlayAdapter
 
+        // Artist Albums and Singles Horizontal Carousels
+        artistAlbumsAdapter = MusicAlbumAdapter(emptyList()) { album ->
+            openAlbumTracks(album)
+        }
+        binding.rvArtistAlbums.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+            adapter = artistAlbumsAdapter
+        }
+
+        artistSinglesAdapter = MusicAlbumAdapter(emptyList()) { single ->
+            openAlbumTracks(single)
+        }
+        binding.rvArtistSingles.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+            adapter = artistSinglesAdapter
+        }
+
         // Back from Tracks Overlay
         binding.btnBackFromTracks.setOnClickListener {
-            binding.musicTracksOverlay.visibility = View.GONE
-            binding.musicScrollView.visibility = View.VISIBLE
+            handleTracksOverlayBack()
         }
 
         // Search Input Handling
@@ -238,14 +262,49 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.btnModalPrev.setOnClickListener {
             musicPlayerManager.playPrevious()
         }
+
+        // Player Artwork Touch Overlay: toggles play/pause and absorbs all touches so WebView never opens YouTube
+        binding.playerTouchOverlay.setOnClickListener {
+            musicPlayerManager.togglePlayPause()
+        }
+        binding.playerTouchOverlay.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_UP) {
+                musicPlayerManager.togglePlayPause()
+            }
+            true
+        }
     }
 
     private var tracksOverlayAdapterCurrentList: List<MusicTrack> = emptyList()
 
+    private fun handleTracksOverlayBack(): Boolean {
+        if (binding.musicTracksOverlay.visibility == View.VISIBLE) {
+            if (isViewingAlbum && currentArtistProfile != null) {
+                // Return from Album to Artist Profile
+                displayArtistProfile(currentArtistProfile!!)
+                return true
+            } else {
+                // Close Overlay and return to Home / Search
+                binding.musicTracksOverlay.visibility = View.GONE
+                binding.musicScrollView.visibility = View.VISIBLE
+                currentArtistProfile = null
+                isViewingAlbum = false
+                return true
+            }
+        }
+        return false
+    }
+
     private fun openCategoryTracks(category: MusicCategory) {
+        currentArtistProfile = null
+        isViewingAlbum = false
         binding.musicScrollView.visibility = View.GONE
         binding.musicTracksOverlay.visibility = View.VISIBLE
         binding.tvTracksOverlayTitle.text = "${category.icon} ${category.title}"
+        binding.searchArtistCard.visibility = View.GONE
+        binding.artistAlbumsSection.visibility = View.GONE
+        binding.artistSinglesSection.visibility = View.GONE
+        binding.tvTracksSectionTitle.visibility = View.GONE
         binding.musicSearchLoading.visibility = View.VISIBLE
 
         binding.overlayProfileHeader.visibility = View.VISIBLE
@@ -277,9 +336,15 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     private fun openPlaylistTracks(playlist: MusicPlaylist) {
+        currentArtistProfile = null
+        isViewingAlbum = false
         binding.musicScrollView.visibility = View.GONE
         binding.musicTracksOverlay.visibility = View.VISIBLE
         binding.tvTracksOverlayTitle.text = playlist.title
+        binding.searchArtistCard.visibility = View.GONE
+        binding.artistAlbumsSection.visibility = View.GONE
+        binding.artistSinglesSection.visibility = View.GONE
+        binding.tvTracksSectionTitle.visibility = View.GONE
         binding.musicSearchLoading.visibility = View.GONE
 
         // Setup Playlist Header Banner
@@ -310,62 +375,201 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     private fun openArtistTracks(artist: MusicArtist) {
+        openArtistProfile(artist.name, "", artist.imageUrl)
+    }
+
+    private fun openArtistProfile(name: String, browseId: String = "", imageUrl: String = "") {
+        isViewingAlbum = false
         binding.musicScrollView.visibility = View.GONE
         binding.musicTracksOverlay.visibility = View.VISIBLE
-        binding.tvTracksOverlayTitle.text = artist.name
+        binding.tvTracksOverlayTitle.text = name
+        binding.searchArtistCard.visibility = View.GONE
+        binding.artistAlbumsSection.visibility = View.GONE
+        binding.artistSinglesSection.visibility = View.GONE
+        binding.tvTracksSectionTitle.visibility = View.GONE
         binding.musicSearchLoading.visibility = View.VISIBLE
 
-        // Setup Artist Profile Header Banner (Spotify style)
         binding.overlayProfileHeader.visibility = View.VISIBLE
-        binding.ivOverlayHeaderThumb.load(artist.imageUrl) {
+        binding.ivOverlayHeaderThumb.load(imageUrl.ifEmpty { null }) {
             crossfade(true)
             placeholder(R.drawable.ic_riffbox_logo)
             error(R.drawable.ic_riffbox_logo)
             transformations(CircleCropTransformation())
         }
-        binding.tvOverlayHeaderName.text = artist.name
-        binding.tvOverlayHeaderSubtitle.text = "${artist.genre} • Discografía y Éxitos"
+        binding.tvOverlayHeaderName.text = name
+        binding.tvOverlayHeaderSubtitle.text = "Cargando discografía, álbumes y éxitos..."
 
         lifecycleScope.launch {
-            val results = MusicCatalogRepository.searchMusic(artist.query)
-            val fullList = MusicCatalogRepository.getTracksForArtist(artist, results)
+            val profile = if (browseId.isNotEmpty()) {
+                MusicCatalogRepository.getArtistProfile(browseId, name, imageUrl)
+            } else {
+                MusicCatalogRepository.getArtistProfileByName(name)
+            }
+
             binding.musicSearchLoading.visibility = View.GONE
-            binding.tvOverlayHeaderSubtitle.text = "${artist.genre} • ${fullList.size} canciones"
+
+            if (profile != null) {
+                currentArtistProfile = profile
+                displayArtistProfile(profile)
+            } else {
+                binding.tvOverlayHeaderSubtitle.text = "Canciones"
+                val tracks = MusicCatalogRepository.searchMusic(name)
+                tracksOverlayAdapterCurrentList = tracks
+                tracksOverlayAdapter.updateList(tracks)
+            }
+        }
+    }
+
+    private fun displayArtistProfile(profile: ArtistProfile) {
+        isViewingAlbum = false
+        binding.tvTracksOverlayTitle.text = profile.name
+        binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.searchArtistCard.visibility = View.GONE
+
+        binding.ivOverlayHeaderThumb.load(profile.imageUrl.ifEmpty { null }) {
+            crossfade(true)
+            placeholder(R.drawable.ic_riffbox_logo)
+            error(R.drawable.ic_riffbox_logo)
+            transformations(CircleCropTransformation())
+        }
+        binding.tvOverlayHeaderName.text = profile.name
+        binding.tvOverlayHeaderSubtitle.text = if (profile.subtitle.isNotEmpty()) {
+            profile.subtitle
+        } else {
+            "Discografía completa • ${profile.topTracks.size} canciones populares"
+        }
+
+        binding.btnOverlayPlayAll.setOnClickListener {
+            if (profile.topTracks.isNotEmpty()) {
+                playMusicTrack(profile.topTracks.first(), profile.topTracks)
+            }
+        }
+        binding.btnOverlayShuffle.setOnClickListener {
+            if (profile.topTracks.isNotEmpty()) {
+                val shuffled = profile.topTracks.shuffled()
+                playMusicTrack(shuffled.first(), shuffled)
+            }
+        }
+
+        // Albums Section
+        if (profile.albums.isNotEmpty()) {
+            binding.artistAlbumsSection.visibility = View.VISIBLE
+            artistAlbumsAdapter.updateList(profile.albums)
+        } else {
+            binding.artistAlbumsSection.visibility = View.GONE
+        }
+
+        // Singles Section
+        if (profile.singles.isNotEmpty()) {
+            binding.artistSinglesSection.visibility = View.VISIBLE
+            artistSinglesAdapter.updateList(profile.singles)
+        } else {
+            binding.artistSinglesSection.visibility = View.GONE
+        }
+
+        // Top Songs Section
+        if (profile.topTracks.isNotEmpty()) {
+            binding.tvTracksSectionTitle.visibility = View.VISIBLE
+            binding.tvTracksSectionTitle.text = "Canciones Populares"
+            tracksOverlayAdapterCurrentList = profile.topTracks
+            tracksOverlayAdapter.updateList(profile.topTracks)
+        } else {
+            binding.tvTracksSectionTitle.visibility = View.GONE
+            tracksOverlayAdapterCurrentList = emptyList()
+            tracksOverlayAdapter.updateList(emptyList())
+        }
+    }
+
+    private fun openAlbumTracks(album: MusicAlbum) {
+        isViewingAlbum = true
+        binding.tvTracksOverlayTitle.text = album.title
+        binding.searchArtistCard.visibility = View.GONE
+        binding.artistAlbumsSection.visibility = View.GONE
+        binding.artistSinglesSection.visibility = View.GONE
+        binding.musicSearchLoading.visibility = View.VISIBLE
+
+        binding.overlayProfileHeader.visibility = View.VISIBLE
+        binding.ivOverlayHeaderThumb.load(album.coverUrl) {
+            crossfade(true)
+            placeholder(R.drawable.ic_riffbox_logo)
+            error(R.drawable.ic_riffbox_logo)
+            transformations(RoundedCornersTransformation(14f))
+        }
+        binding.tvOverlayHeaderName.text = album.title
+        binding.tvOverlayHeaderSubtitle.text = "${album.artist} • ${if (album.year.isNotEmpty()) album.year else "Álbum completo"}"
+
+        binding.tvTracksSectionTitle.visibility = View.VISIBLE
+        binding.tvTracksSectionTitle.text = "Canciones del Álbum"
+
+        lifecycleScope.launch {
+            val albumTracks = MusicCatalogRepository.getAlbumTracks(album)
+            binding.musicSearchLoading.visibility = View.GONE
+
+            binding.tvOverlayHeaderSubtitle.text = "${album.artist} • ${if (album.year.isNotEmpty()) "${album.year} • " else ""}${albumTracks.size} canciones"
 
             binding.btnOverlayPlayAll.setOnClickListener {
-                if (fullList.isNotEmpty()) {
-                    playMusicTrack(fullList.first(), fullList)
+                if (albumTracks.isNotEmpty()) {
+                    playMusicTrack(albumTracks.first(), albumTracks)
                 }
             }
             binding.btnOverlayShuffle.setOnClickListener {
-                if (fullList.isNotEmpty()) {
-                    val shuffled = fullList.shuffled()
+                if (albumTracks.isNotEmpty()) {
+                    val shuffled = albumTracks.shuffled()
                     playMusicTrack(shuffled.first(), shuffled)
                 }
             }
 
-            tracksOverlayAdapterCurrentList = fullList
-            tracksOverlayAdapter.updateList(fullList)
+            tracksOverlayAdapterCurrentList = albumTracks
+            tracksOverlayAdapter.updateList(albumTracks)
         }
     }
 
     private fun performMusicSearch(query: String) {
+        currentArtistProfile = null
+        isViewingAlbum = false
         binding.musicScrollView.visibility = View.GONE
         binding.musicTracksOverlay.visibility = View.VISIBLE
         binding.tvTracksOverlayTitle.text = "Búsqueda: $query"
         binding.overlayProfileHeader.visibility = View.GONE
+        binding.artistAlbumsSection.visibility = View.GONE
+        binding.artistSinglesSection.visibility = View.GONE
+        binding.tvTracksSectionTitle.visibility = View.GONE
+        binding.searchArtistCard.visibility = View.GONE
         binding.musicSearchLoading.visibility = View.VISIBLE
 
         lifecycleScope.launch {
-            val results = MusicCatalogRepository.searchMusic(query)
+            val result = MusicCatalogRepository.searchMusicWithArtist(query)
             binding.musicSearchLoading.visibility = View.GONE
-            tracksOverlayAdapterCurrentList = results
-            tracksOverlayAdapter.updateList(results)
-            if (results.isEmpty()) {
+
+            if (result.artist != null && result.artist.name.isNotEmpty()) {
+                binding.searchArtistCard.visibility = View.VISIBLE
+                binding.tvSearchArtistName.text = result.artist.name
+                binding.tvSearchArtistSubtitle.text = if (result.artist.subtitle.isNotEmpty()) {
+                    "${result.artist.subtitle} • Ver perfil completo, álbumes y singles ▶"
+                } else {
+                    "Artista • Toca para ver discografía, álbumes y singles ▶"
+                }
+                binding.ivSearchArtistThumb.load(result.artist.imageUrl) {
+                    crossfade(true)
+                    placeholder(R.drawable.ic_riffbox_logo)
+                    error(R.drawable.ic_riffbox_logo)
+                    transformations(CircleCropTransformation())
+                }
+                binding.searchArtistCard.setOnClickListener {
+                    openArtistProfile(result.artist.name, result.artist.browseId, result.artist.imageUrl)
+                }
+            } else {
+                binding.searchArtistCard.visibility = View.GONE
+            }
+
+            tracksOverlayAdapterCurrentList = result.tracks
+            tracksOverlayAdapter.updateList(result.tracks)
+            if (result.tracks.isEmpty() && result.artist == null) {
                 Toast.makeText(this@MainActivity, "No se encontraron canciones", Toast.LENGTH_SHORT).show()
             }
         }
     }
+
 
     private fun playMusicTrack(track: MusicTrack, queue: List<MusicTrack>) {
         // Stop TV playback if playing
@@ -845,12 +1049,13 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         // 2. If Tracks Overlay is open:
         if (binding.musicTracksOverlay.visibility == View.VISIBLE) {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
-                binding.musicTracksOverlay.visibility = View.GONE
-                binding.musicScrollView.visibility = View.VISIBLE
-                return true
+                if (handleTracksOverlayBack()) {
+                    return true
+                }
             }
             return super.onKeyDown(keyCode, event)
         }
+
 
         // 3. If in LIVE TV Mode:
         if (currentMode == Mode.LIVE_TV) {

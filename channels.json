@@ -1,8 +1,9 @@
 {
-  "version": 12,
-  "latest_app_version_code": 12,
-  "latest_app_version_name": "1.4.4",
-  "release_notes": "Riffbox v1.4.4: Corregido el paso involuntario de canciones cada 1 segundo. Integrado motor oficial YouTubePlayer v13.0.0 con reproduccion en segundo plano, soporte para referer HTTP de paquete, y transicion limpia de portada a video en pantalla.",
+  "version": 13,
+  "latest_app_version_code": 13,
+  "latest_app_version_name": "1.4.5",
+  "release_notes": "Riffbox v1.4.5: Bloqueo de toques accidentales hacia YouTube en el reproductor (ahora pausa/reanuda la reproducción sin abrir YouTube). Perfiles completos de artistas con carrusel de álbumes de estudio completos, singles y EPs, canciones más escuchadas y visor interactivo de temas por disco.",
+
   "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [
     "Todas",

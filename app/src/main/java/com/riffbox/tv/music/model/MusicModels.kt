@@ -38,3 +38,34 @@ data class MusicArtist(
     val imageUrl: String,
     val query: String
 ) : Serializable
+
+data class MusicAlbum(
+    val browseId: String,
+    val title: String,
+    val year: String = "",
+    val coverUrl: String = "",
+    val artist: String = ""
+) : Serializable
+
+data class MusicArtistSummary(
+    val browseId: String,
+    val name: String,
+    val subtitle: String = "",
+    val imageUrl: String = ""
+) : Serializable
+
+data class ArtistProfile(
+    val browseId: String,
+    val name: String,
+    val subtitle: String = "",
+    val imageUrl: String = "",
+    val topTracks: List<MusicTrack> = emptyList(),
+    val albums: List<MusicAlbum> = emptyList(),
+    val singles: List<MusicAlbum> = emptyList()
+) : Serializable
+
+data class SearchMusicResult(
+    val artist: MusicArtistSummary? = null,
+    val tracks: List<MusicTrack> = emptyList()
+) : Serializable
+
