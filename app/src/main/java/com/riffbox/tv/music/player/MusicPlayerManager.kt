@@ -224,6 +224,23 @@ class MusicPlayerManager(
                 pendingTrack = track
             }
         }
+
+        // Trigger auto-replenishment if nearing the end of queue
+        if (currentQueue.size - (currentIndex + 1) <= 3) {
+            onNeedMoreTracksListener?.invoke()
+        }
+    }
+
+    var onNeedMoreTracksListener: (() -> Unit)? = null
+
+    fun appendTracksToQueue(tracks: List<MusicTrack>) {
+        if (tracks.isEmpty()) return
+        val existingIds = currentQueue.map { it.id }.toSet()
+        val uniqueNew = tracks.filterNot { it.id in existingIds }
+        if (uniqueNew.isNotEmpty()) {
+            currentQueue = currentQueue + uniqueNew
+            Log.d(TAG, "Appended ${uniqueNew.size} new tracks to queue. Total: ${currentQueue.size}")
+        }
     }
 
     fun togglePlayPause() {
@@ -259,8 +276,18 @@ class MusicPlayerManager(
 
     fun playNext() {
         if (currentQueue.isEmpty()) return
-        val nextIdx = (currentIndex + 1) % currentQueue.size
-        playTrack(currentQueue[nextIdx], currentQueue)
+        val nextIdx = currentIndex + 1
+        if (nextIdx < currentQueue.size) {
+            playTrack(currentQueue[nextIdx], currentQueue)
+        } else {
+            val loopIdx = 0
+            playTrack(currentQueue[loopIdx], currentQueue)
+        }
+
+        // Trigger auto-replenishment when nearing queue end
+        if (currentQueue.size - (currentIndex + 1) <= 3) {
+            onNeedMoreTracksListener?.invoke()
+        }
     }
 
     fun playPrevious() {

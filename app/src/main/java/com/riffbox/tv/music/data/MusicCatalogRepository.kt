@@ -1,6 +1,7 @@
 package com.riffbox.tv.music.data
 
 import com.riffbox.tv.music.model.ArtistProfile
+import com.riffbox.tv.music.model.InfiniteGenreStation
 import com.riffbox.tv.music.model.MusicAlbum
 import com.riffbox.tv.music.model.MusicArtist
 import com.riffbox.tv.music.model.MusicArtistSummary
@@ -26,6 +27,172 @@ object MusicCatalogRepository {
 
     private fun track(id: String, title: String, artist: String, album: String = "", duration: String = "") =
         MusicTrack(id, title, artist, album, duration, "https://i.ytimg.com/vi/$id/hqdefault.jpg")
+
+    val infiniteStations: List<InfiniteGenreStation> = listOf(
+        InfiniteGenreStation(
+            id = "station_lucky",
+            title = "Voy a tener suerte",
+            subtitle = "Ruleta musical 100% aleatoria",
+            icon = "🎲",
+            gradientStart = 0xFF8E2DE2,
+            gradientEnd = 0xFF4A00E0,
+            isLucky = true
+        ),
+        InfiniteGenreStation(
+            id = "station_metal",
+            title = "Metal & Pesado",
+            subtitle = "Heavy, Thrash, Nu-Metal & Groove",
+            icon = "🤘",
+            gradientStart = 0xFFB71C1C,
+            gradientEnd = 0xFFFF5722,
+            localPlaylistIds = listOf("pl_metal_nacional", "pl_metal", "pl_metal_extremo"),
+            seedArtists = listOf(
+                "Metallica", "Iron Maiden", "Megadeth", "Pantera", "Horcas", "Carajo",
+                "Hermética", "Malón", "Almafuerte", "V8", "Slipknot", "Slayer", "Judas Priest",
+                "Tren Loco", "Plan 4", "Rammstein", "Sepultura", "Gojira", "Avenged Sevenfold",
+                "O'Connor", "Logos", "Asspera", "Arde la Sangre", "Anthrax", "Black Sabbath"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_rock",
+            title = "Puro Rock",
+            subtitle = "Rock Clásico, Nacional & Alternativo",
+            icon = "🎸",
+            gradientStart = 0xFFC62828,
+            gradientEnd = 0xFFF57C00,
+            localPlaylistIds = listOf("pl_riffs", "pl_nacional", "pl_grunge"),
+            seedArtists = listOf(
+                "AC/DC", "Guns N' Roses", "Led Zeppelin", "La Renga", "Los Redondos",
+                "Divididos", "Charly García", "Soda Stereo", "Queen", "Foo Fighters",
+                "Aerosmith", "The Rolling Stones", "Deep Purple", "Pearl Jam", "Callejeros",
+                "Los Piojos", "Las Pastillas del Abuelo", "Guasones", "Don Osvaldo", "Ciro y los Persas"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_punk",
+            title = "Punk Rock",
+            subtitle = "Punk, Skate Punk & Hardcore",
+            icon = "⚡",
+            gradientStart = 0xFF880E4F,
+            gradientEnd = 0xFF00E676,
+            localPlaylistIds = listOf("pl_2000s"),
+            seedArtists = listOf(
+                "Green Day", "Blink-182", "The Offspring", "Attaque 77", "Bad Religion",
+                "2 Minutos", "Cadena Perpetua", "Flema", "Ramones", "Sum 41", "NOFX",
+                "Pennywise", "Millencolin", "The Clash", "Sex Pistols", "Eterna Inocencia"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_cumbia",
+            title = "Cumbia & Fiesta",
+            subtitle = "Tropical, Villera, Cuarteto & Fiesta",
+            icon = "🌴",
+            gradientStart = 0xFF00695C,
+            gradientEnd = 0xFFFFB300,
+            localPlaylistIds = listOf("pl_fiesta"),
+            seedArtists = listOf(
+                "Los Palmeras", "Damas Gratis", "Rodrigo", "La Mona Jiménez", "Ke Personajes",
+                "Gilda", "Ráfaga", "Yerba Brava", "Walter Olmos", "Ulises Bueno", "Amar Azul",
+                "La K'onga", "Tambó Tambó", "Mala Fama", "Los Charros", "Los del Fuego", "Leo Mattioli"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_80s90s",
+            title = "Clásicos 80s & 90s",
+            subtitle = "Synthpop, New Wave & Hits Retro",
+            icon = "📻",
+            gradientStart = 0xFF4A148C,
+            gradientEnd = 0xFF00B0FF,
+            localPlaylistIds = listOf("pl_riffs", "pl_pop_hits"),
+            seedArtists = listOf(
+                "Michael Jackson", "Madonna", "Queen", "a-ha", "Depeche Mode", "The Cure",
+                "Tears for Fears", "Phil Collins", "Cyndi Lauper", "Whitney Houston",
+                "George Michael", "ABBA", "Duran Duran", "Bon Jovi", "Guns N' Roses"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_2000s",
+            title = "Éxitos 2000s",
+            subtitle = "Nu-Metal, Post-Grunge & Pop 2000",
+            icon = "🎧",
+            gradientStart = 0xFF0D47A1,
+            gradientEnd = 0xFF00E5FF,
+            localPlaylistIds = listOf("pl_2000s", "pl_grunge"),
+            seedArtists = listOf(
+                "Linkin Park", "Evanescence", "Papa Roach", "The Killers", "Coldplay",
+                "Muse", "Arctic Monkeys", "System of a Down", "Limp Bizkit", "Avril Lavigne",
+                "Audioslave", "Gorillaz", "Franz Ferdinand", "My Chemical Romance", "Paramore"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_pop",
+            title = "Pop Global",
+            subtitle = "Hits Mundiales & Dance Pop",
+            icon = "🌟",
+            gradientStart = 0xFFAD1457,
+            gradientEnd = 0xFFFF4081,
+            localPlaylistIds = listOf("pl_pop_hits"),
+            seedArtists = listOf(
+                "Dua Lipa", "The Weeknd", "Bruno Mars", "Coldplay", "Taylor Swift",
+                "Ed Sheeran", "Miley Cyrus", "Harry Styles", "Lady Gaga", "Katy Perry",
+                "Billie Eilish", "Imagine Dragons", "OneRepublic", "Maroon 5", "Shakira"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_blues",
+            title = "Blues & Jazz",
+            subtitle = "Guitar Heroes, Blues Rock & Soul",
+            icon = "🎷",
+            gradientStart = 0xFF3E2723,
+            gradientEnd = 0xFFFF6D00,
+            localPlaylistIds = listOf("pl_guitar_heroes"),
+            seedArtists = listOf(
+                "Jimi Hendrix", "Stevie Ray Vaughan", "Eric Clapton", "BB King", "Gary Moore",
+                "Pappo's Blues", "Pappo", "Buddy Guy", "John Mayer", "Joe Bonamassa",
+                "Muddy Waters", "Carlos Santana", "Albert King", "Rory Gallagher"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_electro",
+            title = "Electrónica",
+            subtitle = "House, EDM, Synthwave & Techno",
+            icon = "🎛️",
+            gradientStart = 0xFF01579B,
+            gradientEnd = 0xFF76FF03,
+            localPlaylistIds = listOf("pl_pop_hits"),
+            seedArtists = listOf(
+                "Daft Punk", "Avicii", "Calvin Harris", "David Guetta", "Tiësto",
+                "Swedish House Mafia", "The Chemical Brothers", "Fatboy Slim", "Martin Garrix", "Kavinsky"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_rap",
+            title = "Hip Hop & Rap",
+            subtitle = "Old School, 90s Boom Bap & Trap",
+            icon = "🎤",
+            gradientStart = 0xFF212121,
+            gradientEnd = 0xFFFFD600,
+            localPlaylistIds = listOf("pl_2000s"),
+            seedArtists = listOf(
+                "Eminem", "Tupac", "Notorious BIG", "Snoop Dogg", "Dr Dre",
+                "50 Cent", "Kendrick Lamar", "Kanye West", "Outkast", "Wu-Tang Clan", "Cypress Hill"
+            )
+        ),
+        InfiniteGenreStation(
+            id = "station_acustico",
+            title = "Acústicos & Relax",
+            subtitle = "MTV Unplugged, Baladas Rock & Chill",
+            icon = "🌧️",
+            gradientStart = 0xFF263238,
+            gradientEnd = 0xFF80CBC4,
+            localPlaylistIds = listOf("pl_acustico"),
+            seedArtists = listOf(
+                "Nirvana Unplugged", "Alice in Chains Unplugged", "Eric Clapton Unplugged",
+                "Soda Stereo Comfort", "Spinetta", "Charly García", "Divididos Acústico",
+                "Catupecu Machu Acústico", "Pearl Jam", "Oasis", "Radiohead"
+            )
+        )
+    )
 
     val categories: List<MusicCategory> = listOf(
         MusicCategory("rock_clasico", "Rock Clásico", "⚡", 0xFFFF5722, 0xFFFF9800, "Classic Rock 70s 80s greatest hits"),
@@ -1444,6 +1611,96 @@ object MusicCatalogRepository {
         resultList.addAll(mixedPool)
 
         return@withContext resultList.distinctBy { it.id }
+    }
+
+    /**
+     * Starts an infinite station with instant zero-delay tracks.
+     * Takes an initial batch of 12-15 tracks from the station's genre or lucky pool,
+     * and shuffles them so playback begins immediately.
+     */
+    suspend fun startInfiniteStation(station: InfiniteGenreStation): List<MusicTrack> = withContext(Dispatchers.IO) {
+        val initialTracks = mutableListOf<MusicTrack>()
+
+        if (station.isLucky) {
+            // Lucky mode: completely random cross-genre lottery
+            val allTracks = playlists.flatMap { it.tracks }.shuffled()
+            initialTracks.addAll(allTracks.take(15))
+        } else {
+            // Genre station: pull from local playlists matching the genre
+            val genreTracks = playlists.filter { it.id in station.localPlaylistIds }
+                .flatMap { it.tracks }
+                .shuffled()
+            if (genreTracks.isNotEmpty()) {
+                initialTracks.addAll(genreTracks.take(15))
+            } else {
+                initialTracks.addAll(playlists.flatMap { it.tracks }.shuffled().take(15))
+            }
+        }
+
+        return@withContext initialTracks.distinctBy { it.id }.shuffled()
+    }
+
+    /**
+     * Dynamically fetches more tracks on the fly for the active infinite station
+     * by querying seed artists or subgenres in YouTube Music, keeping the station endless.
+     */
+    suspend fun fetchMoreTracksForStation(station: InfiniteGenreStation): List<MusicTrack> = withContext(Dispatchers.IO) {
+        val moreTracks = mutableListOf<MusicTrack>()
+
+        try {
+            if (station.isLucky) {
+                // Pick 2 random non-lucky stations and grab an artist from each
+                val otherStations = infiniteStations.filterNot { it.isLucky }
+                val randomStation1 = otherStations.randomOrNull()
+                val randomStation2 = otherStations.randomOrNull()
+
+                val query1 = randomStation1?.seedArtists?.randomOrNull() ?: "hits"
+                val query2 = randomStation2?.seedArtists?.randomOrNull() ?: "music"
+
+                coroutineScope {
+                    val d1 = async { searchMusic(query1).shuffled().take(5) }
+                    val d2 = async { searchMusic(query2).shuffled().take(5) }
+                    moreTracks.addAll(d1.await())
+                    moreTracks.addAll(d2.await())
+                }
+            } else {
+                // Genre station: query 2 random seed artists of this genre
+                val seeds = station.seedArtists.shuffled().take(2)
+                coroutineScope {
+                    val deferred = seeds.map { artist ->
+                        async {
+                            try {
+                                searchMusic(artist).filter { track ->
+                                    track.artist.contains(artist, ignoreCase = true) || artist.contains(track.artist, ignoreCase = true)
+                                }.shuffled().take(4)
+                            } catch (e: Exception) {
+                                emptyList()
+                            }
+                        }
+                    }
+                    moreTracks.addAll(deferred.awaitAll().flatten())
+                }
+
+                // If online search was sparse, supplement from local playlist for that genre
+                if (moreTracks.size < 4) {
+                    val localGenre = playlists.filter { it.id in station.localPlaylistIds }
+                        .flatMap { it.tracks }
+                        .shuffled()
+                    moreTracks.addAll(localGenre.take(10))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Fallback: local tracks
+            val localTracks = if (station.isLucky) {
+                playlists.flatMap { it.tracks }.shuffled().take(10)
+            } else {
+                playlists.filter { it.id in station.localPlaylistIds }.flatMap { it.tracks }.shuffled().take(10)
+            }
+            moreTracks.addAll(localTracks)
+        }
+
+        return@withContext moreTracks.distinctBy { it.id }
     }
 
     /**

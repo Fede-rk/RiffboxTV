@@ -37,12 +37,14 @@ import com.riffbox.tv.model.Channel
 import com.riffbox.tv.music.data.DownloadedTracksManager
 import com.riffbox.tv.music.data.MusicCatalogRepository
 import com.riffbox.tv.music.model.ArtistProfile
+import com.riffbox.tv.music.model.InfiniteGenreStation
 import com.riffbox.tv.music.model.MusicAlbum
 import com.riffbox.tv.music.model.MusicArtist
 import com.riffbox.tv.music.model.MusicCategory
 import com.riffbox.tv.music.model.MusicPlaylist
 import com.riffbox.tv.music.model.MusicTrack
 import com.riffbox.tv.music.player.MusicPlayerManager
+import com.riffbox.tv.music.ui.InfiniteStationAdapter
 import com.riffbox.tv.music.ui.MusicAlbumAdapter
 import com.riffbox.tv.music.ui.MusicArtistAdapter
 import com.riffbox.tv.music.ui.MusicCategoryAdapter
@@ -76,9 +78,12 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     private lateinit var musicArtistAdapter: MusicArtistAdapter
     private lateinit var musicDownloadsAdapter: MusicTrackHorizontalAdapter
     private lateinit var tracksOverlayAdapter: MusicTrackVerticalAdapter
+    private lateinit var infiniteStationAdapter: InfiniteStationAdapter
     private lateinit var artistAlbumsAdapter: MusicAlbumAdapter
     private lateinit var artistSinglesAdapter: MusicAlbumAdapter
     private var currentArtistProfile: ArtistProfile? = null
+    private var activeInfiniteStation: InfiniteGenreStation? = null
+    private var isFetchingMoreStationTracks = false
     private var isViewingAlbum = false
     private var isPlayerModalOpen = false
 
@@ -137,6 +142,34 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     private fun setupMusicUI() {
         // Initialize Music Player Engine
         musicPlayerManager = MusicPlayerManager(this, binding.musicYouTubePlayerView, this)
+
+        // 0. Sintonizador Infinito (Estaciones por Género y Modo "Voy a tener suerte")
+        infiniteStationAdapter = InfiniteStationAdapter(MusicCatalogRepository.infiniteStations) { station ->
+            playInfiniteStation(station)
+        }
+        binding.infiniteStationsRecyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        binding.infiniteStationsRecyclerView.adapter = infiniteStationAdapter
+
+        // Infinite Radio: auto-replenishes tracks when nearing end of queue
+        musicPlayerManager.onNeedMoreTracksListener = {
+            val station = activeInfiniteStation
+            if (station != null && !isFetchingMoreStationTracks) {
+                isFetchingMoreStationTracks = true
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        val more = MusicCatalogRepository.fetchMoreTracksForStation(station)
+                        withContext(Dispatchers.Main) {
+                            musicPlayerManager.appendTracksToQueue(more)
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        isFetchingMoreStationTracks = false
+                    }
+                }
+            }
+        }
 
         // 1. Categories Adapter
         musicCategoryAdapter = MusicCategoryAdapter(MusicCatalogRepository.categories) { category ->
@@ -323,6 +356,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     private fun openCategoryTracks(category: MusicCategory) {
+        activeInfiniteStation = null
         currentArtistProfile = null
         isViewingAlbum = false
         binding.musicScrollView.visibility = View.GONE
@@ -364,6 +398,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     private fun openPlaylistTracks(playlist: MusicPlaylist) {
+        activeInfiniteStation = null
         currentArtistProfile = null
         isViewingAlbum = false
         binding.musicScrollView.visibility = View.GONE
@@ -408,6 +443,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     private fun openArtistProfile(name: String, browseId: String = "", imageUrl: String = "") {
+        activeInfiniteStation = null
         isViewingAlbum = false
         binding.musicScrollView.visibility = View.GONE
         binding.musicTracksOverlay.visibility = View.VISIBLE
@@ -585,6 +621,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     private fun performMusicSearch(query: String) {
+        activeInfiniteStation = null
         currentArtistProfile = null
         isViewingAlbum = false
         binding.musicScrollView.visibility = View.GONE
@@ -631,6 +668,36 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
 
+    private fun playInfiniteStation(station: InfiniteGenreStation) {
+        activeInfiniteStation = station
+        val stationMsg = if (station.isLucky) {
+            "🎲 Sintonizando: Voy a tener suerte (Ruleta Total)..."
+        } else {
+            "${station.icon} Sintonizando: ${station.title} (Modo Sin Fin)..."
+        }
+        Toast.makeText(this, stationMsg, Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch {
+            val initialTracks = MusicCatalogRepository.startInfiniteStation(station)
+            if (initialTracks.isNotEmpty()) {
+                playMusicTrack(initialTracks.first(), initialTracks)
+                // Proactively prefetch more tracks in background to keep queue buffer replenished
+                launch(Dispatchers.IO) {
+                    try {
+                        val more = MusicCatalogRepository.fetchMoreTracksForStation(station)
+                        withContext(Dispatchers.Main) {
+                            musicPlayerManager.appendTracksToQueue(more)
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            } else {
+                Toast.makeText(this@MainActivity, "No se pudieron obtener canciones para la estación", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun playMusicTrack(track: MusicTrack, queue: List<MusicTrack>) {
         // Stop TV playback if playing
         playbackManager.pause()
@@ -668,7 +735,9 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
 
     private fun updateModalUI(track: MusicTrack) {
         binding.modalTrackTitle.text = track.title
-        binding.modalTrackArtist.text = if (track.album.isNotEmpty()) "${track.artist} • ${track.album}" else track.artist
+        val stationBadge = activeInfiniteStation?.let { " • ${it.icon} ${it.title}" } ?: ""
+        val albumInfo = if (track.album.isNotEmpty()) " • ${track.album}" else ""
+        binding.modalTrackArtist.text = "${track.artist}$albumInfo$stationBadge"
 
         // Album Artwork: Always 100% visible, clean and elegant (Zero YouTube video, zero YouTube logos)
         binding.modalArtworkImage.visibility = View.VISIBLE
@@ -681,7 +750,8 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         }
 
         binding.miniTrackTitle.text = track.title
-        binding.miniTrackArtist.text = track.artist
+        val miniStationSuffix = activeInfiniteStation?.let { " • ${it.icon}" } ?: ""
+        binding.miniTrackArtist.text = "${track.artist}$miniStationSuffix"
         binding.miniTrackThumb.load(track.thumbnailUrl) {
             crossfade(true)
             placeholder(R.drawable.ic_riffbox_logo)
@@ -748,6 +818,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     private fun openDownloadsTracks() {
+        activeInfiniteStation = null
         val downloaded = DownloadedTracksManager.getDownloadedTracks(this)
         binding.musicScrollView.visibility = View.GONE
         binding.musicTracksOverlay.visibility = View.VISIBLE

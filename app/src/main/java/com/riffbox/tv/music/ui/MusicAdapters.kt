@@ -9,12 +9,14 @@ import coil.load
 import coil.transform.CircleCropTransformation
 import coil.transform.RoundedCornersTransformation
 import com.riffbox.tv.R
+import com.riffbox.tv.databinding.ItemInfiniteStationBinding
 import com.riffbox.tv.databinding.ItemMusicAlbumBinding
 import com.riffbox.tv.databinding.ItemMusicArtistBinding
 import com.riffbox.tv.databinding.ItemMusicCategoryBinding
 import com.riffbox.tv.databinding.ItemMusicPlaylistBinding
 import com.riffbox.tv.databinding.ItemMusicTrackHorizontalBinding
 import com.riffbox.tv.databinding.ItemMusicTrackVerticalBinding
+import com.riffbox.tv.music.model.InfiniteGenreStation
 import com.riffbox.tv.music.model.MusicAlbum
 import com.riffbox.tv.music.model.MusicArtist
 import com.riffbox.tv.music.model.MusicCategory
@@ -272,6 +274,47 @@ class MusicAlbumAdapter(
 
     fun updateList(newList: List<MusicAlbum>) {
         albums = newList
+        notifyDataSetChanged()
+    }
+}
+
+class InfiniteStationAdapter(
+    private var stations: List<InfiniteGenreStation>,
+    private val onStationClick: (InfiniteGenreStation) -> Unit
+) : RecyclerView.Adapter<InfiniteStationAdapter.ViewHolder>() {
+
+    class ViewHolder(val binding: ItemInfiniteStationBinding) : RecyclerView.ViewHolder(binding.root)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val binding = ItemInfiniteStationBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return ViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val station = stations[position]
+        holder.binding.stationIcon.text = station.icon
+        holder.binding.stationTitle.text = station.title
+        holder.binding.stationSubtitle.text = station.subtitle
+        holder.binding.stationBadge.text = if (station.isLucky) "LUCKY 🎲" else "SIN FIN ∞"
+
+        val gd = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(station.gradientStart.toInt(), station.gradientEnd.toInt())
+        ).apply {
+            cornerRadius = 24f
+            alpha = 230
+        }
+        holder.binding.root.background = gd
+
+        holder.binding.root.setOnClickListener {
+            onStationClick(station)
+        }
+    }
+
+    override fun getItemCount() = stations.size
+
+    fun updateList(newList: List<InfiniteGenreStation>) {
+        stations = newList
         notifyDataSetChanged()
     }
 }

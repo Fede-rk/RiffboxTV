@@ -73,3 +73,15 @@ data class SearchMusicResult(
     val tracks: List<MusicTrack> = emptyList()
 ) : Serializable
 
+data class InfiniteGenreStation(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val icon: String,
+    val gradientStart: Long,
+    val gradientEnd: Long,
+    val isLucky: Boolean = false,
+    val localPlaylistIds: List<String> = emptyList(),
+    val seedArtists: List<String> = emptyList()
+) : Serializable
+
