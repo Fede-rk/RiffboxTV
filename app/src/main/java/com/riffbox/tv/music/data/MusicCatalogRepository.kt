@@ -10,6 +10,9 @@ import com.riffbox.tv.music.model.MusicTrack
 import com.riffbox.tv.music.model.SearchMusicResult
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -562,56 +565,56 @@ object MusicCatalogRepository {
             badge = "FIESTA TOTAL",
             coverUrl = "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=500&q=80",
             tracks = listOf(
-                track("UeFC_9oGqWg", "El Bombón Asesino", "Los Palmeras", "Un Poco Más", "3:12"),
-                track("AO5ZjpPReTs", "Olvídala", "Los Palmeras", "Grandes Éxitos", "3:40"),
-                track("QmYBmoEVqbk", "Soy Sabalero", "Los Palmeras", "En Vivo Colón", "3:30"),
-                track("Z2KyHzgFJsk", "Doble Vida", "Los Palmeras", "Fiesta", "3:15"),
-                track("Xv2vXP7R-KI", "Beso a Beso", "La Mona Jiménez", "Beso a Beso", "4:10"),
-                track("BxucLDUu4bg", "Quién Se Ha Tomado Todo el Vino", "La Mona Jiménez", "En Vivo", "4:20"),
-                track("h9AHQV3pPn8", "El Federal", "La Mona Jiménez", "Raza Negra", "3:55"),
-                track("qt11aXRwMiA", "La Mano de Dios", "Rodrigo", "A 2000", "5:30"),
-                track("NAcDZfLiwss", "Ocho Cuarenta", "Rodrigo", "Cuarteteando", "3:45"),
-                track("glZA97qtUD8", "Lo Mejor del Amor", "Rodrigo", "Lo Mejor del Amor", "3:50"),
-                track("EZaO0mgpy6I", "Soy Cordobés", "Rodrigo", "A 2000", "3:45"),
-                track("j6CUfl4aX9s", "No Te Creas Tan Importante", "Damas Gratis", "Somos Nosotros", "3:35"),
-                track("2lVHb_ypdKI", "Me Vas a Extrañar", "Damas Gratis", "En Vivo", "3:15"),
-                track("pK0qzW17EXw", "Se Te Ve la Tanga", "Damas Gratis", "Para los Pibes", "3:05"),
-                track("hwZhFoVKfsE", "Los Dueños del Pabellón", "Damas Gratis", "Operación Damas Gratis", "3:40"),
-                track("l5Ht6_B7B6g", "Un Finde", "Ke Personajes", "Crossover #2", "2:45"),
-                track("Dcow-Jp3Ak4", "Pobre Corazón", "Ke Personajes", "En Vivo", "3:20"),
-                track("th6QSI8PU7s", "Adiós Amor", "Ke Personajes", "Grandes Éxitos", "3:10"),
-                track("fgXDHQm5eq4", "Loco (Tu Forma de Ser)", "Los Auténticos Decadentes", "El Milagro Argentino", "3:35"),
-                track("XW4X7kHmhyU", "El Murguero", "Los Auténticos Decadentes", "Mi Vida Loca", "4:40"),
-                track("D_DAj1Dt3Ek", "Corazón", "Los Auténticos Decadentes", "Mi Vida Loca", "4:15"),
-                track("Btp4vN7xFzo", "La Guitarra", "Los Auténticos Decadentes", "Mi Vida Loca", "3:45"),
-                track("pw4EXhVHKQ8", "No Me Arrepiento de Este Amor", "Gilda", "Corazón Valiente", "3:30"),
-                track("bemxVqAbmsw", "Fuiste", "Gilda", "Corazón Valiente", "3:00"),
-                track("X72XPwSKcJ4", "Se Me Ha Perdido un Corazón", "Gilda", "Pasito a Pasito", "3:12"),
-                track("by4EHmvME1c", "Una Cerveza", "Ráfaga", "Una Cerveza", "3:25"),
-                track("OsFfjr20tm4", "Mentirosa", "Ráfaga", "Ráfaga en Vivo", "3:15"),
-                track("oaWRxm_5rEA", "Agüita", "Ráfaga", "Ráfaga de Amor", "3:20"),
-                track("rv8G30H5hzI", "Matador", "Los Fabulosos Cadillacs", "Vasos Vacíos", "4:35"),
-                track("8Zdhan166z0", "Vasos Vacíos", "Los Fabulosos Cadillacs", "Vasos Vacíos", "4:40"),
-                track("9xua8KKPZME", "Mal Bicho", "Los Fabulosos Cadillacs", "Rey Azúcar", "4:05"),
-                track("mzpIMywe648", "La Cumbia de los Trapos", "Yerba Brava", "Cumbia Villera", "3:20"),
-                track("RvZNGjAcme8", "Pibe Cantina", "Yerba Brava", "100% Yerba Brava", "3:10"),
-                track("u2Vvxngbn9U", "Por Lo Que Yo Te Quiero", "Walter Olmos", "A Pura Sangre", "3:45"),
-                track("B8LTbjnKC5w", "Amor Fugitivo", "Walter Olmos", "De Madrid al Cielo", "3:30"),
-                track("taR5ENb3Q9w", "Intento", "Ulises Bueno", "En la Piel", "4:05"),
-                track("FPDMY3b2ydc", "Dale Vieja Dale", "Ulises Bueno", "Creo", "3:30"),
-                track("T6Es4yNHEIM", "Universo Paralelo", "La K'onga", "En Vivo", "3:25"),
-                track("YKITrSHdBwk", "Ya No Más", "La K'onga", "Sin Límites", "3:15"),
-                track("I9eqN3N66eA", "Yo Tomo Licor", "Amar Azul", "Dime Tú", "3:15"),
-                track("dGgyrPahAdE", "El Polvito del Amor", "Amar Azul", "Insuperable", "3:10"),
-                track("oRI1MOo0C1A", "El Campanero", "Tambó Tambó", "Tambó Tambó", "3:30"),
-                track("gvDuXIb87j8", "La Cumbia de los Vagos", "Tambó Tambó", "El Auténtico", "3:15"),
-                track("2FXqNNjqY84", "La Marca de la Gorra", "Mala Fama", "Ritmo Sustancia", "3:20"),
-                track("yjecye6ydlI", "Guampa Chata", "Mala Fama", "Para Vos", "3:05"),
-                track("mAr_QQ9uSFc", "Amores Como el Nuestro", "Los Charros", "Corazón de Papel", "3:35"),
-                track("hYgmT91EXlY", "Jurabas Tú", "Los del Fuego", "En Vivo", "3:10"),
-                track("82oqLCiGQvA", "Una Calle Nos Separa", "Los Leales", "Grandes Éxitos", "3:40"),
-                track("LHcSN1wwLE4", "Le Pido a Dios", "Leo Mattioli", "Un Homenaje al Cielo", "3:50"),
-                track("AqqLC07NZ7M", "Tramposa y Mentirosa", "Leo Mattioli", "Ese Soy Yo", "3:40")
+                track("Ij_7b2t_AUs", "El Bombón Asesino", "Los Palmeras", "Un Poco Más", "3:12"),
+                track("NabLI7HdoLQ", "Olvídala", "Los Palmeras", "Grandes Éxitos", "3:40"),
+                track("mpaXJfGmfq0", "Soy Sabalero", "Los Palmeras", "En Vivo Colón", "3:30"),
+                track("z13SHypucdQ", "Doble Vida", "Los Palmeras", "Fiesta", "3:15"),
+                track("wGCs-2ql2Lw", "Beso a Beso", "La Mona Jiménez", "Beso a Beso", "4:10"),
+                track("giX01Mu34p0", "Quién Se Ha Tomado Todo el Vino", "La Mona Jiménez", "En Vivo", "4:20"),
+                track("1fx6aNitmOs", "El Federal", "La Mona Jiménez", "Raza Negra", "3:55"),
+                track("fCZLaLzbhrI", "La Mano de Dios", "Rodrigo", "A 2000", "5:30"),
+                track("ZC0wMHhAKOc", "Ocho Cuarenta", "Rodrigo", "Cuarteteando", "3:45"),
+                track("zbucRj_Dm3Y", "Lo Mejor del Amor", "Rodrigo", "Lo Mejor del Amor", "3:50"),
+                track("JsOtkliXCo8", "Soy Cordobés", "Rodrigo", "A 2000", "3:45"),
+                track("tim_8lORz1c", "No Te Creas Tan Importante", "Damas Gratis", "Somos Nosotros", "3:35"),
+                track("slvEqmq8WsY", "Me Vas a Extrañar", "Damas Gratis", "En Vivo", "3:15"),
+                track("kaxxrKIzU_8", "Se Te Ve la Tanga", "Damas Gratis", "Para los Pibes", "3:05"),
+                track("bscRMgViJzY", "Los Dueños del Pabellón", "Damas Gratis", "Operación Damas Gratis", "3:40"),
+                track("XkLRR9PXQSk", "Un Finde", "Ke Personajes", "Crossover #2", "2:45"),
+                track("LahR993X1PI", "Pobre Corazón", "Ke Personajes", "En Vivo", "3:20"),
+                track("9FTx-xaflZY", "Adiós Amor", "Ke Personajes", "Grandes Éxitos", "3:10"),
+                track("pHPTDX_vS-4", "Loco (Tu Forma de Ser)", "Los Auténticos Decadentes", "El Milagro Argentino", "3:35"),
+                track("w_4hUZtHMCg", "El Murguero", "Los Auténticos Decadentes", "Mi Vida Loca", "4:40"),
+                track("vzwolTO2kE4", "Corazón", "Los Auténticos Decadentes", "Mi Vida Loca", "4:15"),
+                track("d0TkrT3sguM", "La Guitarra", "Los Auténticos Decadentes", "Mi Vida Loca", "3:45"),
+                track("9dtqJ5SHEeM", "No Me Arrepiento de Este Amor", "Gilda", "Corazón Valiente", "3:30"),
+                track("JHZq0NqI2TU", "Fuiste", "Gilda", "Corazón Valiente", "3:00"),
+                track("H3GG5CyaAA8", "Se Me Ha Perdido un Corazón", "Gilda", "Pasito a Pasito", "3:12"),
+                track("2NeZ8Z1ubj4", "Una Cerveza", "Ráfaga", "Una Cerveza", "3:25"),
+                track("RPyG8YJBjp4", "Mentirosa", "Ráfaga", "Ráfaga en Vivo", "3:15"),
+                track("Qt8n8QWV-FI", "Agüita", "Ráfaga", "Ráfaga de Amor", "3:20"),
+                track("Nh26cDCPlKo", "Matador", "Los Fabulosos Cadillacs", "Vasos Vacíos", "4:35"),
+                track("3fWjLmt8xzI", "Vasos Vacíos", "Los Fabulosos Cadillacs", "Vasos Vacíos", "4:40"),
+                track("8hklYKTmaiU", "Mal Bicho", "Los Fabulosos Cadillacs", "Rey Azúcar", "4:05"),
+                track("-ki-3oLJOIE", "La Cumbia de los Trapos", "Yerba Brava", "Cumbia Villera", "3:20"),
+                track("x5PGbRt9m3U", "Pibe Cantina", "Yerba Brava", "100% Yerba Brava", "3:10"),
+                track("VsV1PClw7nw", "Por Lo Que Yo Te Quiero", "Walter Olmos", "A Pura Sangre", "3:45"),
+                track("a2mst3KR0_E", "Amor Fugitivo", "Walter Olmos", "De Madrid al Cielo", "3:30"),
+                track("yCTMFmlgWU8", "Intento", "Ulises Bueno", "En la Piel", "4:05"),
+                track("tv8mLdi60DQ", "Dale Vieja Dale", "Ulises Bueno", "Creo", "3:30"),
+                track("LUaqy_b2QA4", "Universo Paralelo", "La K'onga", "En Vivo", "3:25"),
+                track("WXygjN3YZZ0", "Ya No Más", "La K'onga", "Sin Límites", "3:15"),
+                track("dZWBHnK_SqY", "Yo Tomo Licor", "Amar Azul", "Dime Tú", "3:15"),
+                track("-95hS_UD1II", "El Polvito del Amor", "Amar Azul", "Insuperable", "3:10"),
+                track("D4hnLxYWvB4", "El Campanero", "Tambó Tambó", "Tambó Tambó", "3:30"),
+                track("-23VoCagjDU", "La Cumbia de los Vagos", "Tambó Tambó", "El Auténtico", "3:15"),
+                track("8XyooPB03qI", "La Marca de la Gorra", "Mala Fama", "Ritmo Sustancia", "3:20"),
+                track("h4qsDwpjuss", "Guampa Chata", "Mala Fama", "Para Vos", "3:05"),
+                track("J5iFix-1FJw", "Amores Como el Nuestro", "Los Charros", "Corazón de Papel", "3:35"),
+                track("LmpAu1RqDrU", "Jurabas Tú", "Los del Fuego", "En Vivo", "3:10"),
+                track("MGQhcjK7RBw", "Una Calle Nos Separa", "Los Leales", "Grandes Éxitos", "3:40"),
+                track("mMcKOAEUGro", "Le Pido a Dios", "Leo Mattioli", "Un Homenaje al Cielo", "3:50"),
+                track("lhM_aMimHN8", "Tramposa y Mentirosa", "Leo Mattioli", "Ese Soy Yo", "3:40")
             )
         ),
 
@@ -823,11 +826,76 @@ object MusicCatalogRepository {
     }
 
     /**
+     * Maps an artist to their precise genre family playlist IDs in the local catalog.
+     * Prevents cross-genre contamination (metal jumping to cumbia/cuarteto or rock barrial).
+     */
+    fun getGenreFamilyPlaylistIds(artistName: String): List<String> {
+        val lower = artistName.lowercase().trim()
+        val metalArtists = listOf(
+            "horcas", "malon", "malón", "hermetica", "hermética", "almafuerte", "v8",
+            "tren loco", "o'connor", "oconnor", "logos", "rata blanca", "plan 4", "plan4",
+            "carajo", "a.n.i.m.a.l.", "animal", "against", "lethal", "serpentor", "mastifal",
+            "arde la sangre", "deni", "deny", "cabezones", "asspera", "d-mente", "helker",
+            "cannibal corpse", "death", "behemoth", "amon amarth", "dimmu borgir", "arch enemy",
+            "children of bodom", "cradle of filth", "opeth", "gojira", "lamb of god", "rammstein",
+            "slipknot", "system of a down", "sepultura", "slayer", "judas priest", "pantera",
+            "megadeth", "metallica", "accept", "helloween", "dio", "motörhead", "motorhead",
+            "anthrax", "disturbed", "avenged sevenfold", "scorpions", "iron maiden", "black sabbath",
+            "ozzy", "ghost", "deftones", "korn"
+        )
+        val fiestaArtists = listOf(
+            "los palmeras", "la mona", "rodrigo", "damas gratis", "ke personajes",
+            "autenticos decadentes", "auténticos decadentes", "gilda", "rafaga", "ráfaga",
+            "yerba brava", "walter olmos", "ulises bueno", "amar azul", "la re pandilla",
+            "los leales", "el polaco", "karina", "nestor en bloque", "meta guacha", "la base",
+            "repiola", "pala ancha", "supermerk2", "tambo tambo", "tambó tambó", "mala fama",
+            "los charros", "los del fuego", "leo mattioli", "la k'onga", "la konga"
+        )
+        val punkOr2000sArtists = listOf(
+            "attaque 77", "2 minutos", "dos minutos", "flema", "cadena perpetua", "eterna inocencia",
+            "bad religion", "offspring", "the offspring", "blink-182", "blink 182", "green day", "sum 41",
+            "nofx", "pennywise", "millencolin", "lagwagon", "ramones", "the clash",
+            "linkin park", "papa roach", "limp bizkit", "my chemical romance", "paramore",
+            "evanescence", "foo fighters", "audioslave", "nirvana", "pearl jam", "soundgarden",
+            "alice in chains", "stone temple pilots", "silverchair"
+        )
+        val rockNacionalArtists = listOf(
+            "la renga", "los redondos", "patricio rey", "indio solari", "skay", "divididos",
+            "sumo", "charly garcia", "charly garcía", "spinetta", "soda stereo", "cerati",
+            "callejeros", "don osvaldo", "los piojos", "ciro", "guasones", "las pastillas",
+            "salta la banca", "viejas locas", "intoxicados", "la 25", "gardelitos", "los gardelitos",
+            "el bordo", "sueño de pescado", "la vela puerca", "no te va gustar", "ntvg",
+            "bersuit", "fito paez", "fito páez", "babasonicos", "babasónicos", "estelares",
+            "ratones paranoicos", "mancha de rolando", "los tipitos"
+        )
+        val popArtists = listOf(
+            "michael jackson", "madonna", "the weeknd", "dua lipa", "bruno mars", "daft punk",
+            "abba", "george michael", "whitney houston", "a-ha", "cyndi lauper", "tears for fears",
+            "adele", "coldplay", "ed sheeran", "maroon 5", "elton john", "david bowie", "prince",
+            "phil collins", "backstreet boys", "britney spears", "justin timberlake", "katy perry",
+            "lady gaga", "taylor swift", "sia", "sam smith", "harry styles", "miley cyrus",
+            "billie eilish", "post malone", "imagine dragons", "onerepublic", "gorillaz", "shakira"
+        )
+
+        return when {
+            metalArtists.any { lower.contains(it) || it.contains(lower) } -> listOf("pl_metal_nacional", "pl_metal", "pl_metal_extremo")
+            fiestaArtists.any { lower.contains(it) || it.contains(lower) } -> listOf("pl_fiesta")
+            punkOr2000sArtists.any { lower.contains(it) || it.contains(lower) } -> listOf("pl_2000s", "pl_grunge")
+            rockNacionalArtists.any { lower.contains(it) || it.contains(lower) } -> listOf("pl_nacional")
+            popArtists.any { lower.contains(it) || it.contains(lower) } -> listOf("pl_pop_hits")
+            else -> {
+                val matchedPl = playlists.firstOrNull { pl -> pl.tracks.any { it.artist.lowercase().contains(lower) } }
+                if (matchedPl != null) listOf(matchedPl.id) else listOf("pl_riffs", "pl_nacional")
+            }
+        }
+    }
+
+    /**
      * Builds an intelligent Spotify-style radio queue centered around an initial track.
      * Takes the initial track, other tracks by the same artist, and similar tracks from matching genre playlists.
      */
     fun buildRadioQueue(initialTrack: MusicTrack): List<MusicTrack> {
-        val artistLower = initialTrack.artist.lowercase()
+        val artistLower = initialTrack.artist.lowercase().trim()
         val allCatalogTracks = playlists.flatMap { it.tracks }.distinctBy { it.id }
 
         // Find tracks by the exact same artist
@@ -835,23 +903,16 @@ object MusicCatalogRepository {
             it.id != initialTrack.id && (it.artist.lowercase().contains(artistLower) || artistLower.contains(it.artist.lowercase()))
         }.shuffled()
 
-        // Find which playlist contains this track or similar artists
-        val matchingPlaylist = playlists.firstOrNull { pl ->
-            pl.tracks.any { it.id == initialTrack.id || it.artist.lowercase().contains(artistLower) }
-        }
+        // Find safe matching genre playlists
+        val familyPlaylistIds = getGenreFamilyPlaylistIds(initialTrack.artist)
+        val genrePool = playlists.filter { it.id in familyPlaylistIds }.flatMap { it.tracks }
+            .filter { it.id != initialTrack.id && !it.artist.lowercase().contains(artistLower) }
+            .shuffled()
 
-        val similarTracks = if (matchingPlaylist != null) {
-            matchingPlaylist.tracks.filter { it.id != initialTrack.id && it.artist.lowercase() != artistLower }.shuffled()
-        } else {
-            // Fallback: pick general rock/pop/metal tracks from catalog
-            allCatalogTracks.filter { it.id != initialTrack.id }.shuffled()
-        }
-
-        // Combine: Initial Track -> up to 5 tracks from same artist -> up to 40 similar tracks
         val radioList = mutableListOf<MusicTrack>()
         radioList.add(initialTrack)
-        radioList.addAll(sameArtistTracks.take(6))
-        radioList.addAll(similarTracks.take(45))
+        radioList.addAll(sameArtistTracks.take(5))
+        radioList.addAll(genrePool.take(40))
 
         return radioList.distinctBy { it.id }
     }
@@ -1035,9 +1096,9 @@ object MusicCatalogRepository {
                             val lowerHeader = headerTitle.lowercase()
                             val isAlbum = lowerHeader.contains("lbum")
                             val isSingle = lowerHeader.contains("single") || lowerHeader.contains("sencillo") || lowerHeader.contains("ep")
-                            val isSimilar = lowerHeader.contains("similar") || lowerHeader.contains("fans") ||
+                            val isSimilar = lowerHeader.contains("similar") || lowerHeader.contains("fan") ||
                                     lowerHeader.contains("parecid") || lowerHeader.contains("relacionad") ||
-                                    lowerHeader.contains("gusta") || lowerHeader.contains("oyentes")
+                                    lowerHeader.contains("gust") || lowerHeader.contains("oyente")
 
                             if (isAlbum || isSingle) {
                                 val contents = car?.optJSONArray("contents")
@@ -1250,72 +1311,138 @@ object MusicCatalogRepository {
     }
 
     /**
+     * Fetches top songs directly from an artist's YouTube Music browse page (browseId).
+     */
+    suspend fun getArtistTopTracks(browseId: String, artistName: String = ""): List<MusicTrack> = withContext(Dispatchers.IO) {
+        if (browseId.isEmpty()) return@withContext emptyList()
+        val payload = JSONObject().apply {
+            put("context", JSONObject().apply {
+                put("client", JSONObject().apply {
+                    put("clientName", "WEB_REMIX")
+                    put("clientVersion", "1.20240101.01.00")
+                    put("hl", "es")
+                    put("gl", "AR")
+                })
+            })
+            put("browseId", browseId)
+        }
+
+        val json = executeInnertubePost("https://music.youtube.com/youtubei/v1/browse", payload) ?: return@withContext emptyList()
+        val tracks = mutableListOf<MusicTrack>()
+
+        fun extractTracks(obj: Any) {
+            when (obj) {
+                is JSONObject -> {
+                    if (obj.has("musicShelfRenderer")) {
+                        val shelf = obj.optJSONObject("musicShelfRenderer")
+                        val contents = shelf?.optJSONArray("contents")
+                        if (contents != null) {
+                            for (i in 0 until contents.length()) {
+                                val item = contents.optJSONObject(i)?.optJSONObject("musicResponsiveListItemRenderer")
+                                if (item != null) {
+                                    val t = parseYtmItemToTrack(item, artistName)
+                                    if (t != null) tracks.add(t)
+                                }
+                            }
+                        }
+                    }
+                    val keys = obj.keys()
+                    while (keys.hasNext()) {
+                        val child = obj.opt(keys.next())
+                        if (child != null) extractTracks(child)
+                    }
+                }
+                is JSONArray -> {
+                    for (i in 0 until obj.length()) {
+                        val it = obj.opt(i)
+                        if (it != null) extractTracks(it)
+                    }
+                }
+            }
+        }
+
+        extractTracks(json)
+        return@withContext tracks.distinctBy { it.id }
+    }
+
+    /**
      * Builds an on-the-fly, completely dynamic and random mix of tracks
-     * featuring the target artist and similar artists in the exact same musical genre.
-     * Uses YouTube Music's native artist radio engine (RDEM... / RDAMVM...),
-     * shuffles the pool dynamically in the moment, and NEVER mixes unrelated genres.
+     * featuring the target artist and curated similar artists in the exact same musical genre.
+     * Uses YouTube Music's curated similar artists ("Puede que también te guste"),
+     * strictly bound to the artist's genre family, with zero cross-genre pollution.
      */
     suspend fun buildSimilarArtistsRadioQueue(profile: ArtistProfile): List<MusicTrack> = withContext(Dispatchers.IO) {
-        val radioTracks = mutableListOf<MusicTrack>()
         val artistLower = profile.name.lowercase().trim()
+        val allCatalogTracks = playlists.flatMap { it.tracks }
+        val similarTracksPool = mutableListOf<MusicTrack>()
 
-        // 1. Try artist's official YouTube Music Radio ID (RDEM...)
-        if (profile.radioPlaylistId.isNotEmpty()) {
-            val fetched = getRadioTracks(profile.radioPlaylistId)
-            if (fetched.isNotEmpty()) {
-                radioTracks.addAll(fetched)
-            }
-        }
-
-        // 2. Fallback: try track-based radio on first popular song (RDAMVM...)
-        if (radioTracks.isEmpty() && profile.topTracks.isNotEmpty()) {
-            val firstTrackId = profile.topTracks.first().id
-            if (firstTrackId.isNotEmpty()) {
-                val fetched = getRadioTracks("RDAMVM$firstTrackId")
-                if (fetched.isNotEmpty()) {
-                    radioTracks.addAll(fetched)
-                }
-            }
-        }
-
-        // 3. Fallback: query similar artists from profile ("Fans also like" / "Puede que también te guste")
-        if (radioTracks.isEmpty() && profile.similarArtists.isNotEmpty()) {
+        // 1. PRIMARY & CURATED: Fetch tracks from YouTube Music's "Puede que también te guste" (Fans Also Like)
+        if (profile.similarArtists.isNotEmpty()) {
             val chosenSimilar = profile.similarArtists.shuffled().take(6)
-            for (sim in chosenSimilar) {
-                try {
-                    val searchResult = searchMusic(sim.name)
-                    radioTracks.addAll(searchResult.shuffled().take(3))
-                } catch (e: Exception) {
-                    e.printStackTrace()
+            coroutineScope {
+                val deferredTracks = chosenSimilar.map { sim ->
+                    async {
+                        // Check local catalog first (instant zero-latency tracks)
+                        val localSimTracks = allCatalogTracks.filter {
+                            it.artist.contains(sim.name, ignoreCase = true) || sim.name.contains(it.artist, ignoreCase = true)
+                        }
+                        if (localSimTracks.isNotEmpty()) {
+                            return@async localSimTracks.shuffled().take(3)
+                        }
+
+                        // Query artist top tracks via browseId
+                        if (sim.browseId.isNotEmpty()) {
+                            try {
+                                val top = getArtistTopTracks(sim.browseId, sim.name)
+                                if (top.isNotEmpty()) {
+                                    return@async top.shuffled().take(3)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        // Fallback to search query
+                        try {
+                            val searchRes = searchMusic(sim.name).filter { track ->
+                                track.artist.contains(sim.name, ignoreCase = true) || sim.name.contains(track.artist, ignoreCase = true)
+                            }
+                            if (searchRes.isNotEmpty()) {
+                                return@async searchRes.shuffled().take(3)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+
+                        emptyList<MusicTrack>()
+                    }
                 }
+                similarTracksPool.addAll(deferredTracks.awaitAll().flatten())
             }
         }
 
-        // 4. Combine & Randomize:
-        // Separate tracks by the selected artist vs similar artists
-        val myArtistTracks = (profile.topTracks + radioTracks.filter {
-            it.artist.lowercase().contains(artistLower) || artistLower.contains(it.artist.lowercase())
-        }).distinctBy { it.id }.shuffled()
+        // 2. SAFETY FALLBACK: If online similar artists was empty, use STRICT genre family playlists
+        if (similarTracksPool.size < 6) {
+            val familyPlaylistIds = getGenreFamilyPlaylistIds(profile.name)
+            val genrePool = playlists.filter { it.id in familyPlaylistIds }.flatMap { it.tracks }
+                .filter { !it.artist.lowercase().contains(artistLower) }
+                .shuffled()
+            similarTracksPool.addAll(genrePool.take(25))
+        }
 
-        val otherSimilarTracks = radioTracks.filterNot {
-            it.artist.lowercase().contains(artistLower) || artistLower.contains(it.artist.lowercase())
-        }.distinctBy { it.id }.shuffled()
+        // 3. Assemble dynamic random mix:
+        val myArtistTracks = profile.topTracks.shuffled()
+        val opener = myArtistTracks.firstOrNull()
+
+        val remainingMy = if (opener != null) myArtistTracks.filter { it.id != opener.id }.take(5) else myArtistTracks.take(5)
+        val mixedPool = (remainingMy + similarTracksPool).distinctBy { it.id }.shuffled()
 
         val resultList = mutableListOf<MusicTrack>()
-
-        // Opener: Pick 1 random track from the selected artist so playback begins with that artist
-        val opener = myArtistTracks.firstOrNull()
         if (opener != null) {
             resultList.add(opener)
         }
-
-        // Shuffle the rest of the artist's tracks together with all similar artists' tracks
-        val remainingMyTracks = if (opener != null) myArtistTracks.filter { it.id != opener.id } else myArtistTracks
-        val mixedPool = (remainingMyTracks + otherSimilarTracks).distinctBy { it.id }.shuffled()
-
         resultList.addAll(mixedPool)
 
-        // ABSOLUTE SAFETY: Never fall back to unrelated genres/playlists!
         return@withContext resultList.distinctBy { it.id }
     }
 
