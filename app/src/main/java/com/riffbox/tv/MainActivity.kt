@@ -18,13 +18,17 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import coil.load
 import coil.transform.CircleCropTransformation
 import coil.transform.RoundedCornersTransformation
+import java.io.File
 import com.riffbox.tv.analytics.AnalyticsManager
 import com.riffbox.tv.data.AppUpdateInfo
 import com.riffbox.tv.data.ChannelsRepository
@@ -882,11 +886,17 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     private fun checkAppUpdate(info: AppUpdateInfo) {
         if (info.latestVersionCode > BuildConfig.VERSION_CODE && info.downloadUrl.isNotEmpty()) {
             AlertDialog.Builder(this)
-                .setTitle("Actualización Disponible")
-                .setMessage("Hay una nueva versión de Riffbox TV (${info.latestVersionName}) disponible.\n\n${info.releaseNotes}")
-                .setPositiveButton("Actualizar") { _, _ ->
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
-                    startActivity(intent)
+                .setTitle("🚀 Actualización Disponible (${info.latestVersionName})")
+                .setMessage("Hay una nueva versión de Riffbox TV (${info.latestVersionName}) lista para instalar.\n\n${info.releaseNotes}\n\n💡 También puedes actualizar desde la app Downloader con el código 2852396.")
+                .setPositiveButton("Actualizar e Instalar") { _, _ ->
+                    startApkDownloadAndInstall(info.downloadUrl)
+                }
+                .setNeutralButton("Abrir Enlace Externo") { _, _ ->
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl)))
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "No se pudo abrir el enlace", Toast.LENGTH_SHORT).show()
+                    }
                 }
                 .setNegativeButton("Más tarde", null)
                 .show()
@@ -896,11 +906,13 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     private fun checkDirectUpdate() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val url = URL("https://raw.githubusercontent.com/Fede-rk/RiffboxTV/main/channels.json")
+                // Bust cache using timestamp to guarantee instant update detection
+                val url = URL("https://raw.githubusercontent.com/Fede-rk/RiffboxTV/main/channels.json?t=${System.currentTimeMillis()}")
                 val conn = url.openConnection() as HttpURLConnection
                 conn.connectTimeout = 6000
                 conn.readTimeout = 6000
                 conn.setRequestProperty("User-Agent", "RiffboxTV-App")
+                conn.setRequestProperty("Cache-Control", "no-cache")
                 if (conn.responseCode == HttpURLConnection.HTTP_OK) {
                     val body = conn.inputStream.bufferedReader().use { it.readText() }
                     val root = JSONObject(body)
@@ -913,11 +925,13 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
                             if (!isFinishing && !isDestroyed) {
                                 AlertDialog.Builder(this@MainActivity)
                                     .setTitle("🚀 Actualización Disponible (v$vName)")
-                                    .setMessage("$notes\n\n¿Deseas descargar la actualización ahora?")
-                                    .setPositiveButton("Actualizar Ahora") { _, _ ->
+                                    .setMessage("$notes\n\n¿Deseas descargar e instalar la actualización ahora?\n\n💡 O actualiza desde Downloader con el código 2852396.")
+                                    .setPositiveButton("Descargar e Instalar") { _, _ ->
+                                        startApkDownloadAndInstall(dlUrl)
+                                    }
+                                    .setNeutralButton("Abrir Enlace Externo") { _, _ ->
                                         try {
-                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(dlUrl))
-                                            startActivity(intent)
+                                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(dlUrl)))
                                         } catch (e: Exception) {
                                             Toast.makeText(this@MainActivity, "No se pudo abrir el enlace", Toast.LENGTH_SHORT).show()
                                         }
@@ -931,6 +945,133 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    private fun startApkDownloadAndInstall(downloadUrl: String) {
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle("Descargando Riffbox TV...")
+            .setMessage("Iniciando descarga de la nueva versión, por favor espera un momento...")
+            .setCancelable(false)
+            .create()
+
+        progressDialog.show()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Follow HTTP/HTTPS 301/302 redirects manually (GitHub Releases -> Azure Blob / S3)
+                var currentUrl = downloadUrl
+                var connection: HttpURLConnection? = null
+                var redirects = 0
+                val maxRedirects = 6
+
+                while (redirects < maxRedirects) {
+                    val url = URL(currentUrl)
+                    connection = (url.openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 15000
+                        readTimeout = 30000
+                        instanceFollowRedirects = false
+                        setRequestProperty("User-Agent", "RiffboxTV-App")
+                    }
+
+                    val code = connection.responseCode
+                    if (code in 300..399) {
+                        val loc = connection.getHeaderField("Location") ?: break
+                        currentUrl = if (loc.startsWith("http")) loc else URL(url, loc).toString()
+                        connection.disconnect()
+                        redirects++
+                    } else {
+                        break
+                    }
+                }
+
+                val conn = connection ?: throw IllegalStateException("No se pudo conectar al servidor de descarga")
+                if (conn.responseCode !in 200..299) {
+                    throw IllegalStateException("HTTP ${conn.responseCode}")
+                }
+
+                val apkFile = File(cacheDir, "riffbox_update.apk")
+                if (apkFile.exists()) apkFile.delete()
+
+                val totalLength = conn.contentLength
+                conn.inputStream.use { input ->
+                    apkFile.outputStream().use { output ->
+                        val buffer = ByteArray(8 * 1024)
+                        var bytesRead: Int
+                        var downloaded = 0L
+
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            output.write(buffer, 0, bytesRead)
+                            downloaded += bytesRead
+                            if (totalLength > 0) {
+                                val progressPercent = ((downloaded * 100) / totalLength).toInt()
+                                withContext(Dispatchers.Main) {
+                                    val mbDownloaded = String.format("%.1f", downloaded / (1024.0 * 1024.0))
+                                    val mbTotal = String.format("%.1f", totalLength / (1024.0 * 1024.0))
+                                    progressDialog.setMessage("Descargando: $progressPercent% ($mbDownloaded MB de $mbTotal MB)...")
+                                }
+                            }
+                        }
+                        output.flush()
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    progressDialog.dismiss()
+                    promptInstallApk(apkFile)
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error downloading APK: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    progressDialog.dismiss()
+                    Toast.makeText(this@MainActivity, "Fallo descarga directa: ${e.message}. Abriendo navegador...", Toast.LENGTH_LONG).show()
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)))
+                    } catch (ex: Exception) {
+                        Toast.makeText(this@MainActivity, "No se pudo abrir el instalador", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun promptInstallApk(apkFile: File) {
+        try {
+            val apkUri: Uri = FileProvider.getUriForFile(
+                this,
+                "${applicationContext.packageName}.fileprovider",
+                apkFile
+            )
+
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            // On Android 8.0+ check unknown sources permission
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!packageManager.canRequestPackageInstalls()) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Permiso de Instalación")
+                        .setMessage("Para actualizar Riffbox TV directamente, debes permitir instalar aplicaciones de fuentes desconocidas para esta app.\n\nAl presionar Continuar se abrirán los ajustes de tu TV o dispositivo.")
+                        .setPositiveButton("Continuar") { _, _ ->
+                            try {
+                                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                            } catch (e: Exception) {
+                                startActivity(installIntent)
+                            }
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+                    return
+                }
+            }
+
+            startActivity(installIntent)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error launching installer: ${e.message}", e)
+            Toast.makeText(this, "Error al iniciar instalador: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 

@@ -11,10 +11,9 @@ android {
     defaultConfig {
         applicationId = "com.riffbox.tv"
         minSdk = 21
-        versionCode = 14
-        versionName = "1.4.6"
-
-
+        targetSdk = 34
+        versionCode = 15
+        versionName = "1.4.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -27,6 +26,7 @@ android {
             keyPassword = "riffbox2026"
             enableV1Signing = true
             enableV2Signing = true
+            enableV3Signing = true
         }
     }
 
