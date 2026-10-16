@@ -293,8 +293,14 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
                 }
             }
         }
+        binding.btnMiniPrev.setOnClickListener {
+            musicPlayerManager.playPrevious()
+        }
         binding.btnMiniPlayPause.setOnClickListener {
             musicPlayerManager.togglePlayPause()
+        }
+        binding.btnMiniNext.setOnClickListener {
+            musicPlayerManager.playNext()
         }
 
         // Fullscreen Player Modal Controls
@@ -420,22 +426,41 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             transformations(RoundedCornersTransformation(14f))
         }
         binding.tvOverlayHeaderName.text = playlist.title
-        binding.tvOverlayHeaderSubtitle.text = "${playlist.tracks.size} canciones • ${playlist.badge}"
+        binding.tvOverlayHeaderSubtitle.text = "Selección de hoy • ${playlist.tracks.size} canciones"
 
-        binding.btnOverlayPlayAll.setOnClickListener {
-            if (playlist.tracks.isNotEmpty()) {
-                playMusicTrack(playlist.tracks.first(), playlist.tracks)
+        fun updateButtons(trackList: List<MusicTrack>) {
+            binding.btnOverlayPlayAll.setOnClickListener {
+                if (trackList.isNotEmpty()) {
+                    playMusicTrack(trackList.first(), trackList)
+                }
+            }
+            binding.btnOverlayShuffle.setOnClickListener {
+                if (trackList.isNotEmpty()) {
+                    val shuffled = trackList.shuffled()
+                    playMusicTrack(shuffled.first(), shuffled)
+                }
             }
         }
-        binding.btnOverlayShuffle.setOnClickListener {
-            if (playlist.tracks.isNotEmpty()) {
-                val shuffled = playlist.tracks.shuffled()
-                playMusicTrack(shuffled.first(), shuffled)
-            }
-        }
 
+        // Show today's rotated list immediately (0ms delay)
         tracksOverlayAdapterCurrentList = playlist.tracks
         tracksOverlayAdapter.updateList(playlist.tracks)
+        updateButtons(playlist.tracks)
+
+        // Enrich with fresh online tracks for today's selection
+        lifecycleScope.launch {
+            try {
+                val dailyTracks = MusicCatalogRepository.getDailyTracksForPlaylist(playlist)
+                if (dailyTracks.isNotEmpty() && dailyTracks != playlist.tracks) {
+                    tracksOverlayAdapterCurrentList = dailyTracks
+                    tracksOverlayAdapter.updateList(dailyTracks)
+                    binding.tvOverlayHeaderSubtitle.text = "Selección de hoy • ${dailyTracks.size} canciones"
+                    updateButtons(dailyTracks)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     private fun openArtistTracks(artist: MusicArtist) {

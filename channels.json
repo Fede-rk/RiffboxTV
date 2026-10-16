@@ -1,8 +1,8 @@
 {
-  "version": 19,
-  "latest_app_version_code": 19,
-  "latest_app_version_name": "1.5.1",
-  "release_notes": "Riffbox v1.5.1: Nuevo Sintonizador Infinito en la pantalla principal. Estaciones continuas por género musical (Metal, Rock, Punk, Cumbia, 80s/90s, 2000s, Pop, Blues, Electrónica, Rap, Acústicos) sin fin y nuevo modo 'Voy a tener suerte' 100% aleatorio entre géneros y épocas.",
+  "version": 20,
+  "latest_app_version_code": 20,
+  "latest_app_version_name": "1.5.2",
+  "release_notes": "Riffbox v1.5.2: Corrección integral de IDs de canciones en el catálogo y sintonizador infinito (100% verificado, sin mezclas erróneas), nuevas listas destacadas dinámicas diarias con rotación y canciones nuevas cada día, y nuevos controles de siguiente y anterior en la barra del reproductor minimizado.",
 
   "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [

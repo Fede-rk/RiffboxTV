@@ -22,6 +22,10 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 object MusicCatalogRepository {
 
@@ -226,7 +230,7 @@ object MusicCatalogRepository {
         MusicArtist("pearljam", "Pearl Jam", "Grunge", "https://i.scdn.co/image/ab6761610000e5ebd4b3d87212450b29efb61ec0", "Pearl Jam live")
     )
 
-    val playlists: List<MusicPlaylist> = listOf(
+    val basePlaylists: List<MusicPlaylist> = listOf(
         // 1. LOS MEJORES RIFFS DE LA HISTORIA (52 Canciones)
         MusicPlaylist(
             id = "pl_riffs",
@@ -402,18 +406,18 @@ object MusicCatalogRepository {
                 track("AO5ZjpPReTs", "Verano del 92", "Los Piojos", "3er Arco", "4:40"),
                 track("QmYBmoEVqbk", "El Farolito", "Los Piojos", "3er Arco", "4:14"),
                 track("Z2KyHzgFJsk", "Bicho de Ciudad", "Los Piojos", "Civilización", "5:12"),
-                track("Xv2vXP7R-KI", "Tan Solo", "Los Piojos", "Chactuchac", "4:00"),
-                track("W47hOuQjDag", "Muchacha Ojos de Papel", "Almendra", "Almendra", "3:07"),
-                track("1Zjm0uh8oeA", "Bajan", "Pescado Rabioso", "Artaud", "3:26"),
-                track("BxucLDUu4bg", "Seguir Viviendo Sin Tu Amor", "Luis Alberto Spinetta", "Pelusón of Milk", "2:40"),
-                track("h9AHQV3pPn8", "Seminare", "Serú Girán", "Serú Girán", "3:27"),
-                track("qt11aXRwMiA", "Peperina", "Serú Girán", "Peperina", "3:40"),
+                track("uv1urNGwtOc", "Tan Solo", "Los Piojos", "Chactuchac", "4:00"),
+                track("33bSMJF-SfE", "Muchacha Ojos de Papel", "Almendra", "Almendra", "3:07"),
+                track("pVD4xTf0EWU", "Bajan", "Pescado Rabioso", "Artaud", "3:26"),
+                track("y13ixMXCzzE", "Seguir Viviendo Sin Tu Amor", "Luis Alberto Spinetta", "Pelusón of Milk", "2:40"),
+                track("FohVK9ratG0", "Seminare", "Serú Girán", "Serú Girán", "3:27"),
+                track("8VDXZbxRlHQ", "Peperina", "Serú Girán", "Peperina", "3:40"),
                 track("NAcDZfLiwss", "Mariposa Tecknicolor", "Fito Páez", "Circo Beat", "3:42"),
-                track("glZA97qtUD8", "11 y 6", "Fito Páez", "Giros", "3:15"),
-                track("EZaO0mgpy6I", "El Amor Después del Amor", "Fito Páez", "El Amor Después del Amor", "5:10"),
-                track("j6CUfl4aX9s", "Flaca", "Andrés Calamaro", "Alta Suciedad", "4:47"),
-                track("2lVHb_ypdKI", "Mil Horas", "Los Abuelos de la Nada", "Vasos y Besos", "2:50"),
-                track("pK0qzW17EXw", "Lamento Boliviano", "Los Enanitos Verdes", "Big Bang", "3:42")
+                track("JXzSU38zpho", "11 y 6", "Fito Páez", "Giros", "3:15"),
+                track("JbMbfA94mrk", "El Amor Después del Amor", "Fito Páez", "El Amor Después del Amor", "5:10"),
+                track("0bMNt2Ru8Ig", "Flaca", "Andrés Calamaro", "Alta Suciedad", "4:47"),
+                track("1To_Wz5RWi0", "Mil Horas", "Los Abuelos de la Nada", "Vasos y Besos", "2:50"),
+                track("lYC5wlY8d6A", "Lamento Boliviano", "Los Enanitos Verdes", "Big Bang", "3:42")
             )
         ),
 
@@ -500,7 +504,7 @@ object MusicCatalogRepository {
                 track("Soa3gO7tL-c", "Boulevard of Broken Dreams", "Green Day", "American Idiot", "4:21"),
                 track("kqkGY9jsBOw", "American Idiot", "Green Day", "American Idiot", "2:54"),
                 track("pGhwBFYtn1s", "Wake Me Up When September Ends", "Green Day", "American Idiot", "4:45"),
-                track("98W9QuMq-2k", "All the Small Things", "Blink-182", "Enema of the State", "2:47"),
+                track("ok5BJlAd5-4", "All the Small Things", "Blink-182", "Enema of the State", "2:47"),
                 track("K7l5ZeVVoCA", "What's My Age Again?", "Blink-182", "Enema of the State", "2:28"),
                 track("s1tAYmMjLdY", "I Miss You", "Blink-182", "Blink-182", "3:47"),
                 track("vVy9Lgpg1m8", "First Date", "Blink-182", "Take Off Your Pants and Jacket", "2:51"),
@@ -611,45 +615,45 @@ object MusicCatalogRepository {
             coverUrl = "https://images.unsplash.com/photo-1549834185-bd9f078a5dfe?w=500&q=80",
             tracks = listOf(
                 track("EuUfDUkWmRo", "Tu Eres Su Seguridad", "Hermética", "Hermética", "5:04"),
-                track("_FTW5MdKw98", "Evitando el Ablande", "Hermética", "Ácido Argentino", "2:54"),
-                track("3wsTxNusM4g", "Soy de la Esquina", "Hermética", "Víctimas del Vaciamiento", "3:06"),
-                track("Xv2vXP7R-KI", "Del Camionero", "Hermética", "Ácido Argentino", "4:31"),
-                track("AO5ZjpPReTs", "Memoria de Siglos", "Hermética", "Ácido Argentino", "5:45"),
-                track("QmYBmoEVqbk", "Gil Trabajador", "Hermética", "Ácido Argentino", "3:10"),
-                track("Z2KyHzgFJsk", "Atravesando Todo Límite", "Hermética", "Víctimas del Vaciamiento", "4:00"),
-                track("NAcDZfLiwss", "Masa Anestesiada", "Hermética", "Hermética", "4:43"),
-                track("glZA97qtUD8", "Sé Vos", "Almafuerte", "Mundo Guanaco", "4:03"),
-                track("EZaO0mgpy6I", "El Pibe Tigre", "Almafuerte", "Mundo Guanaco", "4:28"),
-                track("j6CUfl4aX9s", "A Vos Amigo", "Almafuerte", "Del Entorno", "4:50"),
-                track("2lVHb_ypdKI", "Toro y Pampa", "Almafuerte", "Toro y Pampa", "3:40"),
+                track("-vkQBIWv4xg", "Evitando el Ablande", "Hermética", "Ácido Argentino", "2:54"),
+                track("z-VJ5CB8OLE", "Soy de la Esquina", "Hermética", "Víctimas del Vaciamiento", "3:06"),
+                track("uW7VSeie7ZQ", "Del Camionero", "Hermética", "Ácido Argentino", "4:31"),
+                track("yc0iazOu2zQ", "Memoria de Siglos", "Hermética", "Ácido Argentino", "5:45"),
+                track("ShTOiCAu32o", "Gil Trabajador", "Hermética", "Ácido Argentino", "3:10"),
+                track("D-cVzZCD5w0", "Atravesando Todo Límite", "Hermética", "Víctimas del Vaciamiento", "4:00"),
+                track("x_VFVJq7QoU", "Masa Anestesiada", "Hermética", "Hermética", "4:43"),
+                track("_0DQZLsUc8c", "Sé Vos", "Almafuerte", "Mundo Guanaco", "4:03"),
+                track("LbKvlgUZEPw", "El Pibe Tigre", "Almafuerte", "Mundo Guanaco", "4:28"),
+                track("DPuMG6eiKBc", "A Vos Amigo", "Almafuerte", "Del Entorno", "4:50"),
+                track("oWPol4B7O8Y", "Toro y Pampa", "Almafuerte", "Toro y Pampa", "3:40"),
                 track("pK0qzW17EXw", "Almafuerte", "Almafuerte", "Almafuerte", "3:55"),
-                track("Dcow-Jp3Ak4", "Destrucción", "V8", "Luchando por el Metal", "2:01"),
-                track("th6QSI8PU7s", "Brigadas Metálicas", "V8", "Luchando por el Metal", "3:03"),
-                track("fgXDHQm5eq4", "Luchando por el Metal", "V8", "Luchando por el Metal", "2:58"),
-                track("XW4X7kHmhyU", "Cautivos del Sistema", "V8", "Luchando por el Metal", "3:40"),
-                track("D_DAj1Dt3Ek", "Síntoma de la Infección", "Malón", "Espíritu Combativo", "4:05"),
-                track("Btp4vN7xFzo", "Castigador por Herencia", "Malón", "Espíritu Combativo", "3:35"),
-                track("pw4EXhVHKQ8", "Gato Negro", "Malón", "Espíritu Combativo", "3:20"),
-                track("X72XPwSKcJ4", "Mujer Amante", "Rata Blanca", "Magos, Espadas y Rosas", "6:05"),
-                track("by4EHmvME1c", "La Leyenda del Hada y el Mago", "Rata Blanca", "Magos, Espadas y Rosas", "5:24"),
-                track("OsFfjr20tm4", "Guerrero del Arco Iris", "Rata Blanca", "Guerrero del Arco Iris", "5:03"),
-                track("oaWRxm_5rEA", "Volviendo a Casa", "Rata Blanca", "El Camino del Fuego", "5:27"),
-                track("rv8G30H5hzI", "Esperanza", "Horcas", "Vence", "4:15"),
-                track("8Zdhan166z0", "Vencer", "Horcas", "Vence", "3:45"),
-                track("9xua8KKPZME", "Fuego", "Horcas", "Eternos", "4:00"),
-                track("RvZNGjAcme8", "Sacate la Mierda", "Carajo", "Carajo", "3:25"),
-                track("u2Vvxngbn9U", "El Mar de las Almas", "Carajo", "El Mar de las Almas", "4:37"),
-                track("B8LTbjnKC5w", "Luna Hueca", "Carajo", "Frente a Frente", "4:12"),
-                track("taR5ENb3Q9w", "Triste", "Carajo", "Atrapasueños", "4:00"),
+                track("jcvu8FzFh3M", "Destrucción", "V8", "Luchando por el Metal", "2:01"),
+                track("hKv4dGKBPJs", "Brigadas Metálicas", "V8", "Luchando por el Metal", "3:03"),
+                track("DzBVkFfCFsI", "Si Puedes Vencer al Temor", "V8", "Luchando por el Metal", "3:55"),
+                track("g0hyNZo9kHk", "Cautivos del Sistema", "V8", "Luchando por el Metal", "3:40"),
+                track("BnFnhxEfkGY", "Síntoma de la Infección", "Malón", "Espíritu Combativo", "4:05"),
+                track("szW9EiQ881E", "Castigador por Herencia", "Malón", "Espíritu Combativo", "3:35"),
+                track("X1zIWB6OGCs", "Espíritu Combativo", "Malón", "Espíritu Combativo", "3:45"),
+                track("UIl27cgpKaw", "Mujer Amante", "Rata Blanca", "Magos, Espadas y Rosas", "6:05"),
+                track("FaJXa88-QNE", "La Leyenda del Hada y el Mago", "Rata Blanca", "Magos, Espadas y Rosas", "5:24"),
+                track("alYfAjWfws8", "Guerrero del Arco Iris", "Rata Blanca", "Guerrero del Arco Iris", "5:03"),
+                track("Av3iOmKThxs", "Volviendo a Casa", "Rata Blanca", "El Camino del Fuego", "5:27"),
+                track("IDRpS0oM8LQ", "Esperanza", "Horcas", "Vence", "4:15"),
+                track("FtyHJaU40Eg", "Vencer", "Horcas", "Vence", "3:45"),
+                track("kOV6O120ogw", "Fuego", "Horcas", "Eternos", "4:00"),
+                track("D3Q0UAxseA4", "Sacate la Mierda", "Carajo", "Carajo", "3:25"),
+                track("_5pa4pmFOEo", "El Mar de las Almas", "Carajo", "El Mar de las Almas", "4:37"),
+                track("joYfn9wjMDU", "Luna Hueca", "Carajo", "Frente a Frente", "4:12"),
+                track("IJXYjczlwtc", "Triste", "Carajo", "Atrapasueños", "4:00"),
                 track("T6Es4yNHEIM", "El Nuevo Camino del Hombre", "A.N.I.M.A.L.", "El Nuevo Camino del Hombre", "3:40"),
                 track("YKITrSHdBwk", "Sólo por Ser Indios", "A.N.I.M.A.L.", "Poder Latino", "3:30"),
                 track("I9eqN3N66eA", "Combatiente del Metal", "A.N.I.M.A.L.", "A.N.I.M.A.L. 6", "3:15"),
-                track("oRI1MOo0C1A", "Tierra Negra", "Tren Loco", "Tierra Negra", "4:30"),
-                track("gvDuXIb87j8", "Clase Trabajadora", "Tren Loco", "No Me Importa Morir", "3:40"),
-                track("2FXqNNjqY84", "Se Extraña el Dolor", "O'Connor", "Hay un Lugar", "4:12"),
-                track("yjecye6ydlI", "Caníbal", "O'Connor", "Dolor", "3:50"),
-                track("mAr_QQ9uSFc", "Como Relámpago en la Oscuridad", "Logos", "La Industria del Poder", "4:20"),
-                track("hYgmT91EXlY", "No Te Rindas", "Logos", "Generación Mutable", "3:45"),
+                track("dk56o5Zo_Qc", "Tierra Negra", "Tren Loco", "Tierra Negra", "4:30"),
+                track("UF83oJ4TVlQ", "Clase Trabajadora", "Tren Loco", "No Me Importa Morir", "3:40"),
+                track("4KfGrMBFGro", "Se Extraña el Dolor", "O'Connor", "Hay un Lugar", "4:12"),
+                track("2JR-Bg_JQ68", "Caníbal", "O'Connor", "Dolor", "3:50"),
+                track("gclIuHiEVdI", "Como Relámpago en la Oscuridad", "Logos", "La Industria del Poder", "4:20"),
+                track("PjE5otOCJl4", "No Te Rindas", "Logos", "Generación Mutable", "3:45"),
                 track("e-Vi5uugYtY", "Ala Delta", "Divididos", "Acariciando lo Áspero", "4:12"),
                 track("obswq_in8Z4", "El 38", "Divididos", "Acariciando lo Áspero", "2:31"),
                 track("VC5NaNsR7-8", "La Balada del Diablo y la Muerte", "La Renga", "Despedazado por Mil Partes", "5:36"),
@@ -765,7 +769,7 @@ object MusicCatalogRepository {
                 track("8hklYKTmaiU", "Mal Bicho", "Los Fabulosos Cadillacs", "Rey Azúcar", "4:05"),
                 track("-ki-3oLJOIE", "La Cumbia de los Trapos", "Yerba Brava", "Cumbia Villera", "3:20"),
                 track("x5PGbRt9m3U", "Pibe Cantina", "Yerba Brava", "100% Yerba Brava", "3:10"),
-                track("VsV1PClw7nw", "Por Lo Que Yo Te Quiero", "Walter Olmos", "A Pura Sangre", "3:45"),
+                track("u2Vvxngbn9U", "Por Lo Que Yo Te Quiero", "Walter Olmos", "A Pura Sangre", "3:45"),
                 track("a2mst3KR0_E", "Amor Fugitivo", "Walter Olmos", "De Madrid al Cielo", "3:30"),
                 track("yCTMFmlgWU8", "Intento", "Ulises Bueno", "En la Piel", "4:05"),
                 track("tv8mLdi60DQ", "Dale Vieja Dale", "Ulises Bueno", "Creo", "3:30"),
@@ -774,7 +778,7 @@ object MusicCatalogRepository {
                 track("dZWBHnK_SqY", "Yo Tomo Licor", "Amar Azul", "Dime Tú", "3:15"),
                 track("-95hS_UD1II", "El Polvito del Amor", "Amar Azul", "Insuperable", "3:10"),
                 track("D4hnLxYWvB4", "El Campanero", "Tambó Tambó", "Tambó Tambó", "3:30"),
-                track("-23VoCagjDU", "La Cumbia de los Vagos", "Tambó Tambó", "El Auténtico", "3:15"),
+                track("4EtGubqWupM", "La Cumbia de los Vagos", "Tambó Tambó", "El Auténtico", "3:15"),
                 track("8XyooPB03qI", "La Marca de la Gorra", "Mala Fama", "Ritmo Sustancia", "3:20"),
                 track("h4qsDwpjuss", "Guampa Chata", "Mala Fama", "Para Vos", "3:05"),
                 track("J5iFix-1FJw", "Amores Como el Nuestro", "Los Charros", "Corazón de Papel", "3:35"),
@@ -800,7 +804,7 @@ object MusicCatalogRepository {
                 track("ErvgV4P6Fzc", "Patience", "Guns N' Roses", "G N' R Lies", "5:56"),
                 track("F_-ZuVy76yg", "Wind of Change", "Scorpions", "Crazy World", "5:12"),
                 track("O5Kw41JAfG4", "Still Loving You", "Scorpions", "Love at First Sting", "6:28"),
-                track("NvryolGa19A", "Bed of Roses", "Bon Jovi", "Keep the Faith", "6:34"),
+                track("pLnKIscL8s0", "Bed of Roses", "Bon Jovi", "Keep the Faith", "6:34"),
                 track("9BMwcO6_hyA", "Always", "Bon Jovi", "Cross Road", "5:53"),
                 track("JkK8g6FMEXE", "I Don't Want to Miss a Thing", "Aerosmith", "Armageddon", "4:59"),
                 track("NeU4GwYBlLI", "More Than Words", "Extreme", "Pornograffitti", "5:34"),
@@ -923,7 +927,7 @@ object MusicCatalogRepository {
                 track("yOb9Xaug35M", "I WANNA BE YOUR SLAVE", "Måneskin", "Teatro d'ira - Vol. I", "2:53"),
                 track("XrsbfrFPATs", "THE LONELIEST", "Måneskin", "RUSH!", "4:07"),
                 track("aJg4OJxp-co", "Highway Tune", "Greta Van Fleet", "From the Fires", "3:01"),
-                track("FYH8DsU2WCk", "There'd Better Be a Mirrorball", "Arctic Monkeys", "The Car", "4:48"),
+                track("FY5CAz6S9kE", "There'd Better Be a Mirrorball", "Arctic Monkeys", "The Car", "4:48"),
                 track("mxnksi-G0T0", "This Is Why", "Paramore", "This Is Why", "3:27"),
                 track("eVTXPUF4Oz4", "In the End", "Linkin Park", "Hybrid Theory", "3:36"),
                 track("kXYiU_JCYtU", "Numb", "Linkin Park", "Meteora", "3:07"),
@@ -932,7 +936,7 @@ object MusicCatalogRepository {
                 track("9jK-NcRmVcw", "The Pretender", "Foo Fighters", "Echoes, Silence, Patience & Grace", "4:30"),
                 track("AJDiYxKSAqQ", "Basket Case", "Green Day", "Dookie", "3:01"),
                 track("Soa3gO7tL-c", "Boulevard of Broken Dreams", "Green Day", "American Idiot", "4:21"),
-                track("98W9QuMq-2k", "All the Small Things", "Blink-182", "Enema of the State", "2:47"),
+                track("ok5BJlAd5-4", "All the Small Things", "Blink-182", "Enema of the State", "2:47"),
                 track("s1tAYmMjLdY", "I Miss You", "Blink-182", "Blink-182", "3:47"),
                 track("1KP_nPltW9s", "The Kids Aren't Alright", "The Offspring", "Americana", "3:00"),
                 track("YlUKcNNmywk", "Californication", "Red Hot Chili Peppers", "Californication", "5:21"),
@@ -968,6 +972,88 @@ object MusicCatalogRepository {
             )
         )
     )
+
+    val playlists: List<MusicPlaylist>
+        get() = getDailyPlaylists()
+
+    fun getDailyPlaylists(): List<MusicPlaylist> {
+        val cal = Calendar.getInstance()
+        val daySeed = cal.get(Calendar.YEAR) * 1000 + cal.get(Calendar.DAY_OF_YEAR)
+        val dayName = when (cal.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> "Lunes"
+            Calendar.TUESDAY -> "Martes"
+            Calendar.WEDNESDAY -> "Miércoles"
+            Calendar.THURSDAY -> "Jueves"
+            Calendar.FRIDAY -> "Viernes"
+            Calendar.SATURDAY -> "Sábado"
+            Calendar.SUNDAY -> "Domingo"
+            else -> "Hoy"
+        }
+        return basePlaylists.map { pl ->
+            val random = java.util.Random(daySeed.toLong() + pl.id.hashCode())
+            val dailyShuffled = pl.tracks.shuffled(random)
+            pl.copy(
+                tracks = dailyShuffled,
+                subtitle = "Selección de $dayName • ${dailyShuffled.size} temas",
+                badge = "HOY $dayName".uppercase()
+            )
+        }
+    }
+
+    private val dailyEnrichedCache = mutableMapOf<String, Pair<String, List<MusicTrack>>>()
+
+    private fun getPlaylistSeedArtists(playlistId: String): List<String> = when (playlistId) {
+        "pl_riffs" -> listOf("AC/DC", "Led Zeppelin", "Guns N' Roses", "Deep Purple", "Black Sabbath", "Van Halen", "Jimi Hendrix")
+        "pl_grunge" -> listOf("Nirvana", "Pearl Jam", "Soundgarden", "Alice in Chains", "Stone Temple Pilots", "Silverchair")
+        "pl_nacional" -> listOf("Soda Stereo", "Charly García", "Luis Alberto Spinetta", "Patricio Rey", "Los Piojos", "Divididos", "Fito Páez")
+        "pl_metal" -> listOf("Metallica", "Iron Maiden", "Megadeth", "Judas Priest", "Pantera", "Ozzy Osbourne", "Slayer")
+        "pl_2000s" -> listOf("Linkin Park", "Foo Fighters", "Green Day", "Red Hot Chili Peppers", "Blink-182", "System of a Down")
+        "pl_metal_extremo" -> listOf("Cannibal Corpse", "Death", "Behemoth", "Sepultura", "Arch Enemy", "Dimmu Borgir", "Amon Amarth")
+        "pl_metal_nacional" -> listOf("Hermética", "Almafuerte", "V8", "Malón", "Horcas", "Carajo", "Rata Blanca", "A.N.I.M.A.L.")
+        "pl_pop_hits" -> listOf("Michael Jackson", "Madonna", "Queen", "Dua Lipa", "The Weeknd", "Coldplay", "Bruno Mars")
+        "pl_fiesta" -> listOf("Los Palmeras", "La Mona Jiménez", "Rodrigo", "Damas Gratis", "Ke Personajes", "La Delio Valdez", "Ulises Bueno")
+        "pl_acustico" -> listOf("Eric Clapton", "Nirvana", "Guns N' Roses", "Aerosmith", "Scorpions", "Oasis", "Pearl Jam")
+        "pl_guitar_heroes" -> listOf("Stevie Ray Vaughan", "Jimi Hendrix", "Gary Moore", "B.B. King", "Eric Clapton", "Joe Bonamassa", "Santana")
+        "pl_lanzamientos" -> listOf("Linkin Park", "Ghost", "Metallica", "The Rolling Stones", "The Black Keys", "Bring Me the Horizon")
+        else -> emptyList()
+    }
+
+    suspend fun getDailyTracksForPlaylist(playlist: MusicPlaylist): List<MusicTrack> = withContext(Dispatchers.IO) {
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val cached = dailyEnrichedCache[playlist.id]
+        if (cached != null && cached.first == todayStr && cached.second.isNotEmpty()) {
+            return@withContext cached.second
+        }
+
+        val baseRotated = playlist.tracks
+        val seedArtists = getPlaylistSeedArtists(playlist.id)
+        val cal = Calendar.getInstance()
+        val daySeed = cal.get(Calendar.YEAR) * 1000 + cal.get(Calendar.DAY_OF_YEAR)
+        val random = java.util.Random(daySeed.toLong() + playlist.id.hashCode())
+
+        val freshTracks = mutableListOf<MusicTrack>()
+        if (seedArtists.isNotEmpty()) {
+            val selectedSeeds = seedArtists.shuffled(random).take(2)
+            coroutineScope {
+                val deferred = selectedSeeds.map { artist ->
+                    async {
+                        try {
+                            searchMusic(artist).filter { t ->
+                                t.artist.contains(artist, ignoreCase = true) || artist.contains(t.artist, ignoreCase = true)
+                            }.take(5)
+                        } catch (e: Exception) {
+                            emptyList()
+                        }
+                    }
+                }
+                freshTracks.addAll(deferred.awaitAll().flatten())
+            }
+        }
+
+        val combined = (freshTracks + baseRotated).distinctBy { it.id }
+        dailyEnrichedCache[playlist.id] = Pair(todayStr, combined)
+        return@withContext combined
+    }
 
     fun getTracksForCategory(category: MusicCategory, searchResults: List<MusicTrack>): List<MusicTrack> {
         val matchingLocal = when (category.id) {
