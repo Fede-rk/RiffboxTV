@@ -1,8 +1,8 @@
 {
-  "version": 11,
-  "latest_app_version_code": 11,
-  "latest_app_version_name": "1.4.3",
-  "release_notes": "Riffbox v1.4.3: Reproductor de música completamente reconstruido — ahora usa ExoPlayer nativo con YouTube InnerTube API. Audio real sin WebView. Play/pausa funciona. Sin pantalla negra.",
+  "version": 12,
+  "latest_app_version_code": 12,
+  "latest_app_version_name": "1.4.4",
+  "release_notes": "Riffbox v1.4.4: Corregido el paso involuntario de canciones cada 1 segundo. Integrado motor oficial YouTubePlayer v13.0.0 con reproduccion en segundo plano, soporte para referer HTTP de paquete, y transicion limpia de portada a video en pantalla.",
   "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [
     "Todas",

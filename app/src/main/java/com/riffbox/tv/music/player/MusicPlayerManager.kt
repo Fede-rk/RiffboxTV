@@ -4,31 +4,30 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.View
+import android.widget.Toast
 import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.riffbox.tv.music.model.MusicTrack
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
- * Pure ExoPlayer-based music player.
+ * Robust Music Player Manager powered by:
+ * 1. android-youtube-player v13.0.0 (official IFrame Player API with app package origin / referer)
+ *    for all online YouTube music tracks.
+ * 2. Google ExoPlayer for local offline downloaded files.
  *
- * Playback flow:
- *   1. playTrack() is called with a MusicTrack.
- *   2. For downloaded tracks → play local file directly.
- *   3. For online tracks → YoutubeStreamResolver.resolve(videoId) fetches the direct
- *      audio URL from YouTube InnerTube API (Android client), then ExoPlayer streams it.
- *
- * No WebView. No YouTube IFrame. No dependency on a browser engine.
+ * Configured with background playback enabled, debounce on errors to prevent skip loops,
+ * and seamless play/pause controls.
  */
 class MusicPlayerManager(
     private val context: Context,
+    private val youTubePlayerView: YouTubePlayerView,
     private val listener: MusicPlayerListener
 ) {
 
@@ -37,12 +36,17 @@ class MusicPlayerManager(
         fun onPlaybackStateChanged(isPlaying: Boolean)
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    companion object {
+        private const val TAG = "MusicPlayerManager"
+    }
+
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // Backing field for isPlaying so inner anonymous classes can mutate it
-    private var _isPlaying: Boolean = false
-    val isPlaying: Boolean get() = _isPlaying
+    private var activeYouTubePlayer: YouTubePlayer? = null
+    private var isYtReady = false
+    private var pendingTrack: MusicTrack? = null
+
+    private var localExoPlayer: ExoPlayer? = null
 
     var currentTrack: MusicTrack? = null
         private set
@@ -52,43 +56,140 @@ class MusicPlayerManager(
 
     private var currentIndex: Int = -1
 
-    // Tracks being resolved so we don't double-resolve if user taps twice quickly
-    private var resolvingVideoId: String? = null
+    private var _isPlaying: Boolean = false
+    val isPlaying: Boolean get() = _isPlaying
 
-    companion object {
-        private const val TAG = "MusicPlayerManager"
+    private var consecutiveErrorCount = 0
+    private var lastErrorTime = 0L
+
+    init {
+        initLocalPlayer()
+        initYouTubePlayer()
     }
 
-    private val exoPlayer: ExoPlayer = ExoPlayer.Builder(context).build().apply {
-        addListener(object : Player.Listener {
+    private fun initLocalPlayer() {
+        localExoPlayer = ExoPlayer.Builder(context).build().apply {
+            addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(playing: Boolean) {
+                    if (currentTrack?.isDownloaded == true) {
+                        _isPlaying = playing
+                        listener.onPlaybackStateChanged(playing)
+                    }
+                }
 
-            override fun onIsPlayingChanged(playing: Boolean) {
-                _isPlaying = playing
-                listener.onPlaybackStateChanged(playing)
-            }
-
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                when (playbackState) {
-                    Player.STATE_ENDED -> {
-                        Log.d(TAG, "Track ended → advancing to next")
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (currentTrack?.isDownloaded == true && playbackState == Player.STATE_ENDED) {
                         playNext()
                     }
-                    Player.STATE_READY -> {
-                        Log.d(TAG, "ExoPlayer STATE_READY — playing")
-                    }
-                    Player.STATE_BUFFERING -> {
-                        Log.d(TAG, "Buffering…")
-                    }
-                    else -> {}
                 }
-            }
+            })
+        }
+    }
 
-            override fun onPlayerError(error: PlaybackException) {
-                Log.e(TAG, "ExoPlayer error: ${error.message} (cause: ${error.cause?.message})")
-                // Wait a beat then try the next track
-                mainHandler.postDelayed({ playNext() }, 1200)
-            }
-        })
+    private fun initYouTubePlayer() {
+        try {
+            // Enable background audio playback so WebView won't pause when minimized or screen-off
+            youTubePlayerView.enableBackgroundPlayback(true)
+
+            // Remove default library UI overlay to keep our clean Spotify design
+            val emptyUi = View(context)
+            youTubePlayerView.setCustomPlayerUi(emptyUi)
+
+            val iFramePlayerOptions = IFramePlayerOptions.Builder(context)
+                .controls(0)
+                .autoplay(1)
+                .rel(0)
+                .ivLoadPolicy(3)
+                .build()
+
+            youTubePlayerView.initialize(
+                object : AbstractYouTubePlayerListener() {
+                    override fun onReady(youTubePlayer: YouTubePlayer) {
+                        Log.i(TAG, "YouTube Player v13.0.0 engine is READY!")
+                        activeYouTubePlayer = youTubePlayer
+                        isYtReady = true
+
+                        try {
+                            youTubePlayer.unMute()
+                            youTubePlayer.setVolume(100)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error unmuting: ${e.message}")
+                        }
+
+                        pendingTrack?.let { track ->
+                            val t = track
+                            pendingTrack = null
+                            playTrack(t, currentQueue)
+                        }
+                    }
+
+                    override fun onStateChange(
+                        youTubePlayer: YouTubePlayer,
+                        state: PlayerConstants.PlayerState
+                    ) {
+                        if (currentTrack?.isDownloaded != true) {
+                            Log.d(TAG, "YouTube Player State: $state")
+                            when (state) {
+                                PlayerConstants.PlayerState.PLAYING -> {
+                                    _isPlaying = true
+                                    consecutiveErrorCount = 0
+                                    listener.onPlaybackStateChanged(true)
+                                }
+                                PlayerConstants.PlayerState.PAUSED -> {
+                                    _isPlaying = false
+                                    listener.onPlaybackStateChanged(false)
+                                }
+                                PlayerConstants.PlayerState.ENDED -> {
+                                    _isPlaying = false
+                                    listener.onPlaybackStateChanged(false)
+                                    playNext()
+                                }
+                                else -> {}
+                            }
+                        }
+                    }
+
+                    override fun onError(
+                        youTubePlayer: YouTubePlayer,
+                        error: PlayerConstants.PlayerError
+                    ) {
+                        Log.e(TAG, "YouTube Player Error: $error on track ${currentTrack?.title}")
+                        val now = System.currentTimeMillis()
+                        if (now - lastErrorTime < 2000) {
+                            // Debounce rapid error spam
+                            return
+                        }
+                        lastErrorTime = now
+                        consecutiveErrorCount++
+
+                        if (consecutiveErrorCount >= 3) {
+                            Log.w(TAG, "Too many errors ($consecutiveErrorCount). Halting auto-skip.")
+                            _isPlaying = false
+                            listener.onPlaybackStateChanged(false)
+                            mainHandler.post {
+                                Toast.makeText(
+                                    context,
+                                    "No se pudo reproducir este tema en este momento",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            return
+                        }
+
+                        // Wait 2.5 seconds before attempting next track (avoid 1-second skipping loop)
+                        mainHandler.postDelayed({
+                            if (_isPlaying) {
+                                playNext()
+                            }
+                        }, 2500)
+                    }
+                },
+                true, // handleNetworkEvents
+                iFramePlayerOptions
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "initYouTubePlayer failed: ${e.message}", e)
+        }
     }
 
     fun playTrack(track: MusicTrack, queue: List<MusicTrack> = listOf(track)) {
@@ -101,59 +202,27 @@ class MusicPlayerManager(
         listener.onPlaybackStateChanged(true)
 
         if (track.isDownloaded && track.localFilePath != null) {
-            Log.d(TAG, "Playing local file: ${track.localFilePath}")
-            playUrl(track.localFilePath!!)
+            Log.d(TAG, "Playing offline track: ${track.localFilePath}")
+            activeYouTubePlayer?.pause()
+            localExoPlayer?.let { player ->
+                player.stop()
+                player.clearMediaItems()
+                val mediaItem = MediaItem.fromUri(track.localFilePath!!)
+                player.setMediaItem(mediaItem)
+                player.prepare()
+                player.play()
+            }
         } else {
-            Log.d(TAG, "Resolving YouTube stream for: ${track.id} — ${track.title}")
-            resolveAndPlay(track)
-        }
-    }
-
-    private fun resolveAndPlay(track: MusicTrack) {
-        if (resolvingVideoId == track.id) {
-            Log.d(TAG, "Already resolving ${track.id}, skipping duplicate call")
-            return
-        }
-        resolvingVideoId = track.id
-
-        // Stop current playback while we resolve
-        exoPlayer.stop()
-        exoPlayer.clearMediaItems()
-
-        scope.launch {
-            val audioUrl = withContext(Dispatchers.IO) {
-                YoutubeStreamResolver.resolve(track.id)
-            }
-
-            // Only apply if this track is still the current one
-            if (currentTrack?.id != track.id) {
-                Log.d(TAG, "Track changed during resolution, discarding result for ${track.id}")
-                resolvingVideoId = null
-                return@launch
-            }
-
-            resolvingVideoId = null
-
-            if (audioUrl != null) {
-                Log.i(TAG, "Resolved ${track.id} → playing stream")
-                playUrl(audioUrl)
+            Log.d(TAG, "Playing online track: ${track.id} (${track.title})")
+            localExoPlayer?.pause()
+            if (isYtReady && activeYouTubePlayer != null) {
+                activeYouTubePlayer?.loadVideo(track.id, 0f)
+                activeYouTubePlayer?.unMute()
+                activeYouTubePlayer?.setVolume(100)
+                activeYouTubePlayer?.play()
             } else {
-                Log.e(TAG, "Could not resolve stream for ${track.id} — skipping to next")
-                listener.onPlaybackStateChanged(false)
-                mainHandler.postDelayed({ playNext() }, 800)
+                pendingTrack = track
             }
-        }
-    }
-
-    private fun playUrl(url: String) {
-        try {
-            exoPlayer.stop()
-            exoPlayer.clearMediaItems()
-            exoPlayer.setMediaItem(MediaItem.fromUri(url))
-            exoPlayer.prepare()
-            exoPlayer.playWhenReady = true
-        } catch (e: Exception) {
-            Log.e(TAG, "playUrl error: ${e.message}")
         }
     }
 
@@ -164,25 +233,28 @@ class MusicPlayerManager(
     fun resume() {
         _isPlaying = true
         listener.onPlaybackStateChanged(true)
-        exoPlayer.playWhenReady = true
-        if (!exoPlayer.isPlaying && exoPlayer.playbackState == Player.STATE_IDLE) {
-            // Player was stopped completely, need to re-resolve
-            currentTrack?.let { resolveAndPlay(it) }
+        if (currentTrack?.isDownloaded == true) {
+            localExoPlayer?.play()
         } else {
-            exoPlayer.play()
+            activeYouTubePlayer?.play()
         }
     }
 
     fun pause() {
         _isPlaying = false
         listener.onPlaybackStateChanged(false)
-        exoPlayer.pause()
+        if (currentTrack?.isDownloaded == true) {
+            localExoPlayer?.pause()
+        } else {
+            activeYouTubePlayer?.pause()
+        }
     }
 
     fun stop() {
         _isPlaying = false
         listener.onPlaybackStateChanged(false)
-        exoPlayer.stop()
+        localExoPlayer?.stop()
+        activeYouTubePlayer?.pause()
     }
 
     fun playNext() {
@@ -198,7 +270,12 @@ class MusicPlayerManager(
     }
 
     fun release() {
-        scope.cancel()
-        exoPlayer.release()
+        localExoPlayer?.release()
+        localExoPlayer = null
+        try {
+            youTubePlayerView.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

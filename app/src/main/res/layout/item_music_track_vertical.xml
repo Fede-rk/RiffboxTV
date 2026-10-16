@@ -67,15 +67,16 @@
         app:layout_constraintStart_toEndOf="@+id/cardThumb"
         app:layout_constraintTop_toBottomOf="@+id/trackTitle" />
 
-    <!-- Download Button (Hidden on Android TV, visible on phones) -->
+    <!-- Download/Delete Button (Hidden on Android TV, visible on phones) -->
     <ImageView
         android:id="@+id/btnDownload"
-        android:layout_width="38dp"
-        android:layout_height="38dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:clickable="true"
         android:focusable="true"
-        android:padding="8dp"
+        android:padding="4dp"
+        android:contentDescription="Descargar"
         android:src="@drawable/ic_download"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     // ==========================================
     private fun setupMusicUI() {
         // Initialize Music Player Engine
-        musicPlayerManager = MusicPlayerManager(this, this)
+        musicPlayerManager = MusicPlayerManager(this, binding.musicYouTubePlayerView, this)
 
         // 1. Categories Adapter
         musicCategoryAdapter = MusicCategoryAdapter(MusicCatalogRepository.categories) { category ->
@@ -406,6 +406,8 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         binding.modalTrackTitle.text = track.title
         binding.modalTrackArtist.text = if (track.album.isNotEmpty()) "${track.artist} • ${track.album}" else track.artist
 
+        binding.modalArtworkImage.visibility = View.VISIBLE
+        binding.modalArtworkImage.alpha = 1f
         binding.modalArtworkImage.load(track.thumbnailUrl) {
             crossfade(true)
             placeholder(R.drawable.ic_riffbox_logo)
@@ -500,27 +502,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             return
         }
 
-        Toast.makeText(this, "Iniciando descarga de: ${track.title}...", Toast.LENGTH_SHORT).show()
-
-        lifecycleScope.launch {
-            // For YouTube tracks, resolve stream and save
-            val streamUrl = "https://i.ytimg.com/vi/${track.id}/hqdefault.jpg" // placeholder audio stream target
-            val result = DownloadedTracksManager.downloadAudioStream(this@MainActivity, track, streamUrl) { _ ->
-                // Progress update if needed
-            }
-
-            if (result.isSuccess) {
-                Toast.makeText(this@MainActivity, "¡Descarga completa! Guardada en tu dispositivo", Toast.LENGTH_LONG).show()
-                refreshDownloadsCarousel()
-                val updated = tracksOverlayAdapterCurrentList.map {
-                    if (it.id == track.id) it.copy(isDownloaded = true) else it
-                }
-                tracksOverlayAdapterCurrentList = updated
-                tracksOverlayAdapter.updateList(updated)
-            } else {
-                Toast.makeText(this@MainActivity, "No se pudo descargar la pista", Toast.LENGTH_SHORT).show()
-            }
-        }
+        Toast.makeText(this, "La descarga offline para este tema estará disponible próximamente", Toast.LENGTH_SHORT).show()
     }
 
     private fun refreshDownloadsCarousel() {
@@ -543,6 +525,14 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         val playPauseRes = if (isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
         binding.btnMiniPlayPause.setImageResource(playPauseRes)
         binding.btnModalPlayPause.setImageResource(playPauseRes)
+
+        if (isPlaying) {
+            // Video has started playing: fade out the cover image so video is visible
+            binding.modalArtworkImage.animate().alpha(0f).setDuration(400).start()
+        } else {
+            // Paused: bring back the cover art
+            binding.modalArtworkImage.animate().alpha(1f).setDuration(200).start()
+        }
     }
 
     // ==========================================

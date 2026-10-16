@@ -596,6 +596,12 @@
             app:layout_constraintTop_toBottomOf="@+id/btnMinimizePlayer"
             app:layout_constraintVertical_chainStyle="packed">
 
+            <com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
+                android:id="@+id/musicYouTubePlayerView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:enableAutomaticInitialization="false" />
+
             <ImageView
                 android:id="@+id/modalArtworkImage"
                 android:layout_width="match_parent"
