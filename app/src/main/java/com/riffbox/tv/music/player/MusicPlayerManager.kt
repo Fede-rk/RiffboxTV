@@ -76,7 +76,6 @@ class MusicPlayerManager(
                     if (currentTrack?.isDownloaded == true) {
                         _isPlaying = playing
                         listener.onPlaybackStateChanged(playing)
-                        currentTrack?.let { RiffboxAudioService.updateServiceForMusic(context, it, playing) }
                     }
                 }
 
@@ -137,12 +136,10 @@ class MusicPlayerManager(
                                     _isPlaying = true
                                     consecutiveErrorCount = 0
                                     listener.onPlaybackStateChanged(true)
-                                    currentTrack?.let { RiffboxAudioService.updateServiceForMusic(context, it, true) }
                                 }
                                 PlayerConstants.PlayerState.PAUSED -> {
                                     _isPlaying = false
                                     listener.onPlaybackStateChanged(false)
-                                    currentTrack?.let { RiffboxAudioService.updateServiceForMusic(context, it, false) }
                                 }
                                 PlayerConstants.PlayerState.ENDED -> {
                                     _isPlaying = false

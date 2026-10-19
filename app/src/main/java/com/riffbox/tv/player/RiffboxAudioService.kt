@@ -7,9 +7,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -92,25 +89,6 @@ class RiffboxAudioService : Service() {
     private var isPlayingState = true
 
     private var wakeLock: PowerManager.WakeLock? = null
-    private var audioManager: AudioManager? = null
-    private var audioFocusRequest: AudioFocusRequest? = null
-
-    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
-        when (focusChange) {
-            AudioManager.AUDIOFOCUS_LOSS -> {
-                pauseInternal()
-            }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                pauseInternal()
-            }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                // Lower volume or transient duck
-            }
-            AudioManager.AUDIOFOCUS_GAIN -> {
-                resumeInternal()
-            }
-        }
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -153,7 +131,6 @@ class RiffboxAudioService : Service() {
                 isPlayingState = intent.getBooleanExtra("is_playing", true)
 
                 if (isPlayingState) {
-                    requestAudioFocus()
                     acquireWakeLock()
                 } else {
                     releaseWakeLock()
@@ -169,7 +146,6 @@ class RiffboxAudioService : Service() {
                 isPlayingState = intent.getBooleanExtra("is_playing", true)
 
                 if (isPlayingState) {
-                    requestAudioFocus()
                     acquireWakeLock()
                 } else {
                     releaseWakeLock()
@@ -196,44 +172,6 @@ class RiffboxAudioService : Service() {
         return START_STICKY
     }
 
-    private fun requestAudioFocus(): Boolean {
-        val am = audioManager ?: (getSystemService(Context.AUDIO_SERVICE) as? AudioManager).also { audioManager = it }
-            ?: return false
-
-        val res = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val attr = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build()
-            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(attr)
-                .setAcceptsDelayedFocusGain(true)
-                .setOnAudioFocusChangeListener(audioFocusChangeListener)
-                .build()
-            audioFocusRequest = request
-            am.requestAudioFocus(request)
-        } else {
-            @Suppress("DEPRECATION")
-            am.requestAudioFocus(
-                audioFocusChangeListener,
-                AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN
-            )
-        }
-        return res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-    }
-
-    private fun abandonAudioFocus() {
-        val am = audioManager ?: return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
-            audioFocusRequest = null
-        } else {
-            @Suppress("DEPRECATION")
-            am.abandonAudioFocus(audioFocusChangeListener)
-        }
-    }
-
     private fun acquireWakeLock() {
         try {
             if (wakeLock == null) {
@@ -241,7 +179,7 @@ class RiffboxAudioService : Service() {
                 wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Riffbox:AudioWakeLock")
             }
             if (wakeLock?.isHeld != true) {
-                wakeLock?.acquire(2 * 60 * 60 * 1000L) // 2 hours
+                wakeLock?.acquire(2 * 60 * 60 * 1000L) // 2 hours safety timeout
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -271,7 +209,6 @@ class RiffboxAudioService : Service() {
     }
 
     private fun resumeInternal() {
-        requestAudioFocus()
         acquireWakeLock()
         isPlayingState = true
         if (isMusicMode) {
@@ -311,7 +248,6 @@ class RiffboxAudioService : Service() {
 
     private fun stopInternal() {
         releaseWakeLock()
-        abandonAudioFocus()
         isPlayingState = false
         if (isMusicMode) {
             musicPlayerManagerInstance?.stop()
@@ -408,7 +344,6 @@ class RiffboxAudioService : Service() {
         super.onDestroy()
         isServiceRunning = false
         releaseWakeLock()
-        abandonAudioFocus()
         mediaSession.isActive = false
         mediaSession.release()
     }
