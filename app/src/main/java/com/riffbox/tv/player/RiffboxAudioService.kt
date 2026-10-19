@@ -42,43 +42,55 @@ class RiffboxAudioService : Service() {
         var isMusicMode: Boolean = false
 
         fun updateService(context: Context, channel: Channel, isPlaying: Boolean) {
-            isMusicMode = false
-            val intent = Intent(context, RiffboxAudioService::class.java).apply {
-                action = ACTION_START
-                putExtra("channel_name", channel.name)
-                putExtra("channel_category", channel.category)
-                putExtra("channel_badge", channel.badge)
-                putExtra("is_playing", isPlaying)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                isMusicMode = false
+                val intent = Intent(context, RiffboxAudioService::class.java).apply {
+                    action = ACTION_START
+                    putExtra("channel_name", channel.name)
+                    putExtra("channel_category", channel.category)
+                    putExtra("channel_badge", channel.badge)
+                    putExtra("is_playing", isPlaying)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
         fun updateServiceForMusic(context: Context, track: MusicTrack, isPlaying: Boolean) {
-            isMusicMode = true
-            val intent = Intent(context, RiffboxAudioService::class.java).apply {
-                action = ACTION_START_MUSIC
-                putExtra("track_title", track.title)
-                putExtra("track_artist", track.artist)
-                putExtra("track_album", track.album)
-                putExtra("track_thumb", track.thumbnailUrl)
-                putExtra("is_playing", isPlaying)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                isMusicMode = true
+                val intent = Intent(context, RiffboxAudioService::class.java).apply {
+                    action = ACTION_START_MUSIC
+                    putExtra("track_title", track.title)
+                    putExtra("track_artist", track.artist)
+                    putExtra("track_album", track.album)
+                    putExtra("track_thumb", track.thumbnailUrl)
+                    putExtra("is_playing", isPlaying)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, RiffboxAudioService::class.java).apply {
-                action = ACTION_STOP
+            try {
+                val intent = Intent(context, RiffboxAudioService::class.java).apply {
+                    action = ACTION_STOP
+                }
+                context.startService(intent)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            context.startService(intent)
         }
     }
 
@@ -136,7 +148,7 @@ class RiffboxAudioService : Service() {
                     releaseWakeLock()
                 }
                 updateMediaMetadata()
-                startForeground(NOTIFICATION_ID, buildMediaNotification())
+                safeStartForeground()
             }
             ACTION_START_MUSIC -> {
                 isMusicMode = true
@@ -151,7 +163,7 @@ class RiffboxAudioService : Service() {
                     releaseWakeLock()
                 }
                 updateMediaMetadata()
-                startForeground(NOTIFICATION_ID, buildMediaNotification())
+                safeStartForeground()
             }
             ACTION_PLAY -> {
                 resumeInternal()
@@ -170,6 +182,14 @@ class RiffboxAudioService : Service() {
             }
         }
         return START_STICKY
+    }
+
+    private fun safeStartForeground() {
+        try {
+            startForeground(NOTIFICATION_ID, buildMediaNotification())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun acquireWakeLock() {
@@ -216,7 +236,7 @@ class RiffboxAudioService : Service() {
         } else {
             playbackManagerInstance?.resume()
         }
-        startForeground(NOTIFICATION_ID, buildMediaNotification())
+        safeStartForeground()
     }
 
     private fun pauseInternal() {
@@ -227,7 +247,7 @@ class RiffboxAudioService : Service() {
         } else {
             playbackManagerInstance?.pause()
         }
-        startForeground(NOTIFICATION_ID, buildMediaNotification())
+        safeStartForeground()
     }
 
     private fun skipNextInternal() {

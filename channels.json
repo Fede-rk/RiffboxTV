@@ -1,8 +1,8 @@
 {
-  "version": 23,
-  "latest_app_version_code": 23,
-  "latest_app_version_name": "1.5.5",
-  "release_notes": "Riffbox v1.5.5: Solución de reproducción normal y mejoras de estabilidad.",
+  "version": 24,
+  "latest_app_version_code": 24,
+  "latest_app_version_name": "1.5.6",
+  "release_notes": "Riffbox v1.5.6: Mejoras de navegación gestual, listas diarias renovadas y mayor estabilidad general.",
 
   "download_url": "https://github.com/Fede-rk/RiffboxTV/releases/latest/download/Riffbox-TV.apk",
   "categories": [

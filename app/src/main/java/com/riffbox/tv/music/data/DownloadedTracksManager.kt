@@ -152,8 +152,8 @@ object DownloadedTracksManager {
                     }
 
                     if (progressUrl.isNotEmpty()) {
-                        // Poll progress URL up to 15 times (every 1.5 seconds)
-                        for (attempt in 1..15) {
+                        // Poll progress URL up to 30 times (every 1.5 seconds)
+                        for (attempt in 1..30) {
                             kotlinx.coroutines.delay(1500)
                             try {
                                 val pConn = URL(progressUrl).openConnection() as HttpURLConnection
@@ -192,11 +192,14 @@ object DownloadedTracksManager {
         audioStreamUrl: String,
         onProgress: (Int) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
+        val safeName = "${track.artist} - ${track.title}"
+            .replace(Regex("[^a-zA-Z0-9.-]"), "_")
+            .take(60)
+        val outputFile = File(getOfflineDir(context), "${safeName}_${track.id}.mp3")
         try {
-            val safeName = "${track.artist} - ${track.title}"
-                .replace(Regex("[^a-zA-Z0-9.-]"), "_")
-                .take(60)
-            val outputFile = File(getOfflineDir(context), "${safeName}_${track.id}.mp3")
+            if (outputFile.exists()) {
+                outputFile.delete()
+            }
 
             var currentUrl = audioStreamUrl
             var connection: HttpURLConnection
@@ -250,6 +253,11 @@ object DownloadedTracksManager {
             Result.success(outputFile)
         } catch (e: Exception) {
             e.printStackTrace()
+            try {
+                if (outputFile.exists()) {
+                    outputFile.delete()
+                }
+            } catch (_: Exception) {}
             Result.failure(e)
         }
     }

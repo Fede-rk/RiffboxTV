@@ -1018,6 +1018,13 @@ object MusicCatalogRepository {
         else -> emptyList()
     }
 
+    fun getTodayBaseTracks(playlist: MusicPlaylist): List<MusicTrack> {
+        val cal = Calendar.getInstance()
+        val daySeed = cal.get(Calendar.YEAR) * 1000 + cal.get(Calendar.DAY_OF_YEAR)
+        val random = java.util.Random(daySeed.toLong() + playlist.id.hashCode())
+        return playlist.tracks.shuffled(random)
+    }
+
     suspend fun getDailyTracksForPlaylist(playlist: MusicPlaylist): List<MusicTrack> = withContext(Dispatchers.IO) {
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         val cached = dailyEnrichedCache[playlist.id]
@@ -1025,11 +1032,11 @@ object MusicCatalogRepository {
             return@withContext cached.second
         }
 
-        val baseRotated = playlist.tracks
-        val seedArtists = getPlaylistSeedArtists(playlist.id)
         val cal = Calendar.getInstance()
         val daySeed = cal.get(Calendar.YEAR) * 1000 + cal.get(Calendar.DAY_OF_YEAR)
         val random = java.util.Random(daySeed.toLong() + playlist.id.hashCode())
+        val baseRotated = playlist.tracks.shuffled(random)
+        val seedArtists = getPlaylistSeedArtists(playlist.id)
 
         val freshTracks = mutableListOf<MusicTrack>()
         if (seedArtists.isNotEmpty()) {
@@ -1738,15 +1745,33 @@ object MusicCatalogRepository {
                 !text.contains("mona jimenez") && !text.contains("damas gratis") &&
                 !text.contains("ke personajes") && !text.contains("rodrigo") &&
                 !text.contains("los piojos") && !text.contains("divididos") &&
-                !text.contains("la renga") && !text.contains("sumo") && !text.contains("calamaro")
+                !text.contains("la renga") && !text.contains("sumo") && !text.contains("calamaro") &&
+                !text.contains("skay") && !text.contains("indio solari") && !text.contains("callejeros") &&
+                !text.contains("salta la banca") && !text.contains("babasonicos") &&
+                !text.contains("las pastillas") && !text.contains("cerati") &&
+                !text.contains("cuarteto") && !text.contains("cumbia") && !text.contains("tan bionica")
             }
             "station_punk" -> {
                 !text.contains("palmeras") && !text.contains("mona jimenez") &&
-                !text.contains("damas gratis") && !text.contains("ke personajes")
+                !text.contains("damas gratis") && !text.contains("ke personajes") &&
+                !text.contains("rodrigo") && !text.contains("metallica") &&
+                !text.contains("slayer") && !text.contains("cannibal corpse") &&
+                !text.contains("sepultura") && !text.contains("cuarteto") && !text.contains("cumbia")
             }
             "station_cumbia" -> {
                 !text.contains("metallica") && !text.contains("slayer") &&
-                !text.contains("iron maiden") && !text.contains("cannibal corpse")
+                !text.contains("iron maiden") && !text.contains("cannibal corpse") &&
+                !text.contains("pantera") && !text.contains("megadeth") &&
+                !text.contains("green day") && !text.contains("ramones") &&
+                !text.contains("nirvana") && !text.contains("slipknot") &&
+                !text.contains("almafuerte") && !text.contains("hermetica") &&
+                !text.contains("horcas") && !text.contains("carajo")
+            }
+            "station_rock" -> {
+                !text.contains("palmeras") && !text.contains("mona jimenez") &&
+                !text.contains("damas gratis") && !text.contains("ke personajes") &&
+                !text.contains("rodrigo") && !text.contains("cuarteto") &&
+                !text.contains("cannibal corpse") && !text.contains("mayhem")
             }
             else -> true
         }

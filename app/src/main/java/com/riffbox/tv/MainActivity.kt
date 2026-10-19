@@ -21,6 +21,7 @@ import android.view.inputmethod.InputMethodManager
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -114,6 +115,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         setupMusicUI()
         setupLiveTVUI()
         setupGestures()
+        setupBackNavigation()
         setupPlayback()
         syncChannelsAndCheckUpdates()
         checkDirectUpdate()
@@ -453,15 +455,16 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         }
 
         // Show today's rotated list immediately (0ms delay)
-        tracksOverlayAdapterCurrentList = playlist.tracks
-        tracksOverlayAdapter.updateList(playlist.tracks)
-        updateButtons(playlist.tracks)
+        val todayBase = MusicCatalogRepository.getTodayBaseTracks(playlist)
+        tracksOverlayAdapterCurrentList = todayBase
+        tracksOverlayAdapter.updateList(todayBase)
+        updateButtons(todayBase)
 
         // Enrich with fresh online tracks for today's selection
         lifecycleScope.launch {
             try {
                 val dailyTracks = MusicCatalogRepository.getDailyTracksForPlaylist(playlist)
-                if (dailyTracks.isNotEmpty() && dailyTracks != playlist.tracks) {
+                if (dailyTracks.isNotEmpty() && dailyTracks != todayBase) {
                     tracksOverlayAdapterCurrentList = dailyTracks
                     tracksOverlayAdapter.updateList(dailyTracks)
                     binding.tvOverlayHeaderSubtitle.text = "Selección de hoy • ${dailyTracks.size} canciones"
@@ -909,6 +912,10 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         }
 
         Toast.makeText(this, "Descargando '${track.title}'...", Toast.LENGTH_SHORT).show()
+        if (musicPlayerManager.currentTrack?.id == track.id) {
+            binding.btnModalDownload.isEnabled = false
+            binding.btnModalDownload.alpha = 0.5f
+        }
 
         lifecycleScope.launch {
             val audioUrl = withContext(Dispatchers.IO) {
@@ -916,6 +923,10 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             }
 
             if (audioUrl.isNullOrEmpty()) {
+                if (musicPlayerManager.currentTrack?.id == track.id) {
+                    binding.btnModalDownload.isEnabled = true
+                    binding.btnModalDownload.alpha = 1.0f
+                }
                 Toast.makeText(
                     this@MainActivity,
                     "No se pudo obtener el audio para '${track.title}'. Reintentá en unos momentos.",
@@ -929,6 +940,11 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
                 track,
                 audioUrl
             ) { _ -> }
+
+            if (musicPlayerManager.currentTrack?.id == track.id) {
+                binding.btnModalDownload.isEnabled = true
+                binding.btnModalDownload.alpha = 1.0f
+            }
 
             result.onSuccess { file ->
                 Toast.makeText(
@@ -1418,8 +1434,53 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
     }
 
     // ==========================================
-    // REMOTE CONTROL KEYS (D-PAD & BACK)
+    // BACK NAVIGATION (GESTURES & REMOTE KEYS)
     // ==========================================
+    private fun setupBackNavigation() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleAppBackNavigation()
+            }
+        })
+    }
+
+    private fun handleAppBackNavigation(): Boolean {
+        // 1. If Fullscreen Music Player Modal is open:
+        if (isPlayerModalOpen) {
+            closeMusicPlayerModal()
+            return true
+        }
+
+        // 2. If Tracks Overlay is open:
+        if (binding.musicTracksOverlay.visibility == View.VISIBLE) {
+            if (handleTracksOverlayBack()) {
+                return true
+            }
+        }
+
+        // 3. If in LIVE TV Mode:
+        if (currentMode == Mode.LIVE_TV) {
+            if (isSidebarVisible) {
+                hideSidebar()
+                return true
+            } else {
+                switchToMusic()
+                return true
+            }
+        }
+
+        // 4. In MUSIC Mode (Home Screen):
+        if (backPressedOnce) {
+            finish()
+            return true
+        } else {
+            backPressedOnce = true
+            Toast.makeText(this, getString(R.string.press_back_again), Toast.LENGTH_SHORT).show()
+            handler.postDelayed({ backPressedOnce = false }, 2000)
+            return true
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         // 1. If Fullscreen Music Player Modal is open:
         if (isPlayerModalOpen) {
@@ -1492,12 +1553,7 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
 
         // 4. In MUSIC Mode (Home Screen):
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if (backPressedOnce) {
-                finish()
-            } else {
-                backPressedOnce = true
-                Toast.makeText(this, getString(R.string.press_back_again), Toast.LENGTH_SHORT).show()
-                handler.postDelayed({ backPressedOnce = false }, 2000)
+            if (handleAppBackNavigation()) {
                 return true
             }
         }
