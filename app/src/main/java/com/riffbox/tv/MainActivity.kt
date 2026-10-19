@@ -22,6 +22,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -306,6 +307,15 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         // Fullscreen Player Modal Controls
         binding.btnMinimizePlayer.setOnClickListener {
             closeMusicPlayerModal()
+        }
+        binding.btnModalDownload.setOnClickListener {
+            musicPlayerManager.currentTrack?.let { track ->
+                if (DownloadedTracksManager.isTrackDownloaded(this, track.id)) {
+                    confirmTrackDelete(track)
+                } else {
+                    confirmTrackDownload(track)
+                }
+            }
         }
         binding.modalTrackArtist.setOnClickListener {
             musicPlayerManager.currentTrack?.let { track ->
@@ -764,6 +774,20 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
         val albumInfo = if (track.album.isNotEmpty()) " • ${track.album}" else ""
         binding.modalTrackArtist.text = "${track.artist}$albumInfo$stationBadge"
 
+        if (isTvDevice) {
+            binding.btnModalDownload.visibility = View.GONE
+        } else {
+            binding.btnModalDownload.visibility = View.VISIBLE
+            val isDownloaded = DownloadedTracksManager.isTrackDownloaded(this, track.id)
+            if (isDownloaded) {
+                binding.btnModalDownload.setImageResource(R.drawable.ic_downloaded)
+                binding.btnModalDownload.imageTintList = null
+            } else {
+                binding.btnModalDownload.setImageResource(R.drawable.ic_download)
+                binding.btnModalDownload.imageTintList = ContextCompat.getColorStateList(this, R.color.text_secondary)
+            }
+        }
+
         // Album Artwork: Always 100% visible, clean and elegant (Zero YouTube video, zero YouTube logos)
         binding.modalArtworkImage.visibility = View.VISIBLE
         binding.modalArtworkImage.alpha = 1f
@@ -837,6 +861,10 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
                 if (isDownloadsView) {
                     binding.tvOverlayHeaderSubtitle.text = "${updated.size} canciones en tu dispositivo"
                 }
+                if (musicPlayerManager.currentTrack?.id == track.id) {
+                    binding.btnModalDownload.setImageResource(R.drawable.ic_download)
+                    binding.btnModalDownload.imageTintList = ContextCompat.getColorStateList(this@MainActivity, R.color.text_secondary)
+                }
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -880,7 +908,56 @@ class MainActivity : AppCompatActivity(), PlaybackManager.PlaybackListener, Musi
             return
         }
 
-        Toast.makeText(this, "La descarga offline para este tema estará disponible próximamente", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Descargando '${track.title}'...", Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch {
+            val audioUrl = withContext(Dispatchers.IO) {
+                DownloadedTracksManager.resolveAudioStreamUrl(track.id)
+            }
+
+            if (audioUrl.isNullOrEmpty()) {
+                Toast.makeText(
+                    this@MainActivity,
+                    "No se pudo obtener el audio para '${track.title}'. Reintentá en unos momentos.",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@launch
+            }
+
+            val result = DownloadedTracksManager.downloadAudioStream(
+                this@MainActivity,
+                track,
+                audioUrl
+            ) { _ -> }
+
+            result.onSuccess { file ->
+                Toast.makeText(
+                    this@MainActivity,
+                    "¡Descarga completa!: ${track.title}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                track.isDownloaded = true
+                track.localFilePath = file.absolutePath
+                refreshDownloadsCarousel()
+
+                val updated = tracksOverlayAdapterCurrentList.map {
+                    if (it.id == track.id) it.copy(isDownloaded = true, localFilePath = file.absolutePath) else it
+                }
+                tracksOverlayAdapterCurrentList = updated
+                tracksOverlayAdapter.updateList(updated)
+
+                if (musicPlayerManager.currentTrack?.id == track.id) {
+                    binding.btnModalDownload.setImageResource(R.drawable.ic_downloaded)
+                    binding.btnModalDownload.imageTintList = null
+                }
+            }.onFailure { err ->
+                Toast.makeText(
+                    this@MainActivity,
+                    "Error al descargar: ${err.message ?: "Intente nuevamente"}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     private fun refreshDownloadsCarousel() {

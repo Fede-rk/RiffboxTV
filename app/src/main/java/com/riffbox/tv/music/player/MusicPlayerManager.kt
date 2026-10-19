@@ -15,6 +15,7 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.Abs
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.riffbox.tv.music.model.MusicTrack
+import com.riffbox.tv.player.RiffboxAudioService
 
 /**
  * Robust Music Player Manager powered by:
@@ -63,6 +64,7 @@ class MusicPlayerManager(
     private var lastErrorTime = 0L
 
     init {
+        RiffboxAudioService.musicPlayerManagerInstance = this
         initLocalPlayer()
         initYouTubePlayer()
     }
@@ -74,6 +76,7 @@ class MusicPlayerManager(
                     if (currentTrack?.isDownloaded == true) {
                         _isPlaying = playing
                         listener.onPlaybackStateChanged(playing)
+                        currentTrack?.let { RiffboxAudioService.updateServiceForMusic(context, it, playing) }
                     }
                 }
 
@@ -134,10 +137,12 @@ class MusicPlayerManager(
                                     _isPlaying = true
                                     consecutiveErrorCount = 0
                                     listener.onPlaybackStateChanged(true)
+                                    currentTrack?.let { RiffboxAudioService.updateServiceForMusic(context, it, true) }
                                 }
                                 PlayerConstants.PlayerState.PAUSED -> {
                                     _isPlaying = false
                                     listener.onPlaybackStateChanged(false)
+                                    currentTrack?.let { RiffboxAudioService.updateServiceForMusic(context, it, false) }
                                 }
                                 PlayerConstants.PlayerState.ENDED -> {
                                     _isPlaying = false
@@ -200,6 +205,7 @@ class MusicPlayerManager(
 
         listener.onTrackChanged(track)
         listener.onPlaybackStateChanged(true)
+        RiffboxAudioService.updateServiceForMusic(context, track, isPlaying = true)
 
         if (track.isDownloaded && track.localFilePath != null) {
             Log.d(TAG, "Playing offline track: ${track.localFilePath}")
@@ -250,6 +256,7 @@ class MusicPlayerManager(
     fun resume() {
         _isPlaying = true
         listener.onPlaybackStateChanged(true)
+        currentTrack?.let { RiffboxAudioService.updateServiceForMusic(context, it, isPlaying = true) }
         if (currentTrack?.isDownloaded == true) {
             localExoPlayer?.play()
         } else {
@@ -260,6 +267,7 @@ class MusicPlayerManager(
     fun pause() {
         _isPlaying = false
         listener.onPlaybackStateChanged(false)
+        currentTrack?.let { RiffboxAudioService.updateServiceForMusic(context, it, isPlaying = false) }
         if (currentTrack?.isDownloaded == true) {
             localExoPlayer?.pause()
         } else {
@@ -272,6 +280,7 @@ class MusicPlayerManager(
         listener.onPlaybackStateChanged(false)
         localExoPlayer?.stop()
         activeYouTubePlayer?.pause()
+        RiffboxAudioService.stop(context)
     }
 
     fun playNext() {
@@ -297,6 +306,10 @@ class MusicPlayerManager(
     }
 
     fun release() {
+        if (RiffboxAudioService.musicPlayerManagerInstance == this) {
+            RiffboxAudioService.musicPlayerManagerInstance = null
+        }
+        RiffboxAudioService.stop(context)
         localExoPlayer?.release()
         localExoPlayer = null
         try {

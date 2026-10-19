@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.os.Environment
 import com.riffbox.tv.music.model.MusicTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -119,6 +120,72 @@ object DownloadedTracksManager {
         return dir
     }
 
+    suspend fun resolveAudioStreamUrl(videoId: String): String? = withContext(Dispatchers.IO) {
+        val endpoints = listOf(
+            "https://loader.to/ajax/download.php?format=mp3&url=https://www.youtube.com/watch?v=$videoId",
+            "https://en.loader.to/ajax/download.php?format=mp3&url=https://www.youtube.com/watch?v=$videoId"
+        )
+
+        for (ep in endpoints) {
+            try {
+                val conn = URL(ep).openConnection() as HttpURLConnection
+                conn.connectTimeout = 12000
+                conn.readTimeout = 15000
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                conn.connect()
+                val response = conn.inputStream.bufferedReader().use { it.readText() }
+                conn.disconnect()
+
+                val json = JSONObject(response)
+                if (json.optBoolean("success", false)) {
+                    val directUrl = json.optString("download_url")
+                    if (directUrl.isNotEmpty() && directUrl != "null") {
+                        return@withContext directUrl
+                    }
+
+                    var progressUrl = json.optString("progress_url")
+                    if (progressUrl.isEmpty() || progressUrl == "null") {
+                        val id = json.optString("id")
+                        if (id.isNotEmpty()) {
+                            progressUrl = "https://lto2.affadaffa.com/api/progress?id=$id"
+                        }
+                    }
+
+                    if (progressUrl.isNotEmpty()) {
+                        // Poll progress URL up to 15 times (every 1.5 seconds)
+                        for (attempt in 1..15) {
+                            kotlinx.coroutines.delay(1500)
+                            try {
+                                val pConn = URL(progressUrl).openConnection() as HttpURLConnection
+                                pConn.connectTimeout = 8000
+                                pConn.readTimeout = 8000
+                                pConn.setRequestProperty("User-Agent", "Mozilla/5.0")
+                                val pResp = pConn.inputStream.bufferedReader().use { it.readText() }
+                                pConn.disconnect()
+
+                                val pJson = JSONObject(pResp)
+                                val dl = pJson.optString("download_url")
+                                val success = pJson.optInt("success", 0)
+                                if (dl.isNotEmpty() && dl != "null" && (success == 1 || dl.startsWith("http"))) {
+                                    return@withContext dl
+                                }
+                                val text = pJson.optString("text")
+                                if (text.contains("error", ignoreCase = true)) {
+                                    break
+                                }
+                            } catch (pe: Exception) {
+                                // continue polling
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        null
+    }
+
     suspend fun downloadAudioStream(
         context: Context,
         track: MusicTrack,
@@ -129,13 +196,33 @@ object DownloadedTracksManager {
             val safeName = "${track.artist} - ${track.title}"
                 .replace(Regex("[^a-zA-Z0-9.-]"), "_")
                 .take(60)
-            val outputFile = File(getOfflineDir(context), "${safeName}_${track.id}.m4a")
+            val outputFile = File(getOfflineDir(context), "${safeName}_${track.id}.mp3")
 
-            val connection = URL(audioStreamUrl).openConnection() as HttpURLConnection
-            connection.connectTimeout = 15000
-            connection.readTimeout = 30000
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Android)")
-            connection.connect()
+            var currentUrl = audioStreamUrl
+            var connection: HttpURLConnection
+            var redirectCount = 0
+
+            while (true) {
+                connection = URL(currentUrl).openConnection() as HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 30000
+                connection.instanceFollowRedirects = true
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                val responseCode = connection.responseCode
+                if ((responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
+                            responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
+                            responseCode == 307 || responseCode == 308) && redirectCount < 5
+                ) {
+                    val newLocation = connection.getHeaderField("Location")
+                    if (!newLocation.isNullOrEmpty()) {
+                        currentUrl = newLocation
+                        redirectCount++
+                        connection.disconnect()
+                        continue
+                    }
+                }
+                break
+            }
 
             val totalBytes = connection.contentLength
             val inputStream = connection.inputStream
